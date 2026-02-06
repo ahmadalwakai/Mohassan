@@ -52,7 +52,8 @@ export async function sendVerificationEmail(
   token: string,
   name: string
 ): Promise<void> {
-  const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${token}`;
+  const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.mohassansy.com';
+  const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
 
   console.log('[EMAIL_SEND_START] Recipient:', email, '| Route: sendVerificationEmail | RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
 
