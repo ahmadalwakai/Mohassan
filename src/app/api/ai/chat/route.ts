@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     // Add system prompt for Arabic/English assistant
     const systemMessage: ChatMessage = {
       role: 'system',
-      content: `أنت مساعد ذكي يتحدث العربية والإنجليزية. اسمك "محسّن AI".
+      content: `أنت مساعد ذكي يتحدث العربية والإنجليزية. اسمك "Typhoon AI".
 مهمتك مساعدة المستخدمين في:
 - الإجابة على الأسئلة العامة
 - كتابة وتحرير النصوص
