@@ -1,0 +1,428 @@
+/**
+ * Mohassan Prisma Schema
+ * Full database schema for the platform
+ */
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum ContentStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+  HIDDEN
+  DELETED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportReason {
+  SPAM
+  INAPPROPRIATE
+  HARASSMENT
+  MISINFORMATION
+  COPYRIGHT
+  OTHER
+}
+
+enum ModerationActionType {
+  WARN
+  HIDE
+  UNHIDE
+  TEMP_BAN
+  PERM_BAN
+  UNBAN
+  DELETE
+  RESTORE
+}
+
+enum NotificationType {
+  SYSTEM
+  CONTENT
+  MODERATION
+  REPORT
+  ACCOUNT
+}
+
+enum AIEventType {
+  SEARCH
+  SUMMARIZE
+  TAG
+  MOD_ASSIST
+}
+
+// ==================== AUTH MODELS (Auth.js) ====================
+
+model User {
+  id            String     @id @default(cuid())
+  name          String?
+  email         String     @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?    // For credentials provider
+  role          Role       @default(USER)
+  status        UserStatus @default(ACTIVE)
+  
+  // Profile fields
+  bio           String?    @db.Text
+  phone         String?
+  location      String?
+  
+  // Ban info
+  bannedAt      DateTime?
+  banReason     String?
+  banExpiry     DateTime?  // null = permanent
+  warningsCount Int        @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  accounts          Account[]
+  sessions          Session[]
+  
+  // Content relations
+  contents          Content[]
+  
+  // Reports
+  reportsFiled      Report[]          @relation("ReportsFiled")
+  reportsReviewed   Report[]          @relation("ReportsReviewed")
+  
+  // Moderation
+  moderationActions ModerationAction[] @relation("ModeratorActions")
+  actionsReceived   ModerationAction[] @relation("UserActions")
+  moderationLogs    ModerationLog[]    @relation("ModeratorLog")
+  
+  // Notifications
+  notifications     Notification[]
+  
+  // Audit logs (as actor)
+  auditLogs         AuditLog[]
+  
+  // AI events
+  aiEvents          AIEventLog[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ==================== CONTENT MODELS ====================
+
+model Content {
+  id          String        @id @default(cuid())
+  type        String        // news, directory, market, community, initiative
+  title       String
+  slug        String?
+  body        String?       @db.Text
+  excerpt     String?
+  image       String?
+  metadata    Json?         // Flexible JSON for type-specific data
+  status      ContentStatus @default(DRAFT)
+  
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  // Moderation
+  moderatedAt     DateTime?
+  moderatedBy     String?
+  rejectionReason String?    @db.Text
+  
+  // Stats
+  viewCount       Int        @default(0)
+  
+  // SEO
+  metaTitle       String?
+  metaDescription String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  publishedAt DateTime?
+
+  // Relations
+  reports           Report[]
+  moderationActions ModerationAction[]
+  tags              ContentTag[]
+
+  @@unique([type, slug])
+  @@index([type, status])
+  @@index([authorId])
+  @@map("contents")
+}
+
+model Tag {
+  id        String       @id @default(cuid())
+  name      String       @unique
+  nameAr    String?      // Arabic name
+  slug      String       @unique
+  
+  createdAt DateTime @default(now())
+  
+  contents  ContentTag[]
+
+  @@map("tags")
+}
+
+model ContentTag {
+  contentId String
+  tagId     String
+  
+  content   Content @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([contentId, tagId])
+  @@map("content_tags")
+}
+
+// ==================== MODERATION MODELS ====================
+
+model Report {
+  id          String       @id @default(cuid())
+  reason      ReportReason
+  description String?      @db.Text
+  status      ReportStatus @default(PENDING)
+  
+  // Reporter
+  reporterId  String
+  reporter    User         @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+  
+  // Content being reported
+  contentId   String
+  content     Content      @relation(fields: [contentId], references: [id], onDelete: Cascade)
+  
+  // Reviewer
+  reviewerId  String?
+  reviewer    User?        @relation("ReportsReviewed", fields: [reviewerId], references: [id], onDelete: SetNull)
+  
+  // Resolution
+  resolvedAt    DateTime?
+  resolution    String?   @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([reporterId])
+  @@index([contentId])
+  @@map("reports")
+}
+
+model ModerationAction {
+  id          String               @id @default(cuid())
+  type        ModerationActionType
+  reason      String?              @db.Text
+  notes       String?              @db.Text // Internal notes
+  
+  // Moderator who took action
+  moderatorId String
+  moderator   User                 @relation("ModeratorActions", fields: [moderatorId], references: [id], onDelete: Cascade)
+  
+  // Target user (if applicable)
+  targetUserId String?
+  targetUser   User?               @relation("UserActions", fields: [targetUserId], references: [id], onDelete: SetNull)
+  
+  // Target content (if applicable)
+  targetContentId String?
+  targetContent   Content?         @relation(fields: [targetContentId], references: [id], onDelete: SetNull)
+  
+  // AI suggestion (if any)
+  aiSuggestion    Json?
+  aiConfidence    Float?
+  
+  // Duration for temp bans
+  duration        Int?              // in hours
+  expiresAt       DateTime?
+  
+  createdAt DateTime @default(now())
+
+  @@index([moderatorId])
+  @@index([targetUserId])
+  @@index([targetContentId])
+  @@map("moderation_actions")
+}
+
+// ==================== NOTIFICATION MODEL ====================
+
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  link      String?
+  read      Boolean          @default(false)
+  readAt    DateTime?
+  
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  metadata  Json?
+  
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+  @@map("notifications")
+}
+
+// ==================== MODERATION LOG MODEL ====================
+
+model ModerationLog {
+  id          String   @id @default(cuid())
+  action      String   // APPROVE_CONTENT, REJECT_CONTENT, TAKEDOWN_CONTENT, WARN_USER, BAN_USER, UNBAN_USER
+  targetType  String   // CONTENT, USER
+  targetId    String
+  
+  moderatorId String
+  moderator   User     @relation("ModeratorLog", fields: [moderatorId], references: [id], onDelete: Cascade)
+  
+  details     Json?
+  
+  createdAt   DateTime @default(now())
+
+  @@index([moderatorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("moderation_logs")
+}
+
+// ==================== LOGGING MODELS ====================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  action      String   // e.g., USER_BANNED, CONTENT_DELETED, SETTINGS_UPDATED
+  
+  // Actor
+  actorId     String
+  actor       User     @relation(fields: [actorId], references: [id], onDelete: Cascade)
+  actorRole   Role
+  
+  // Target
+  targetType  String   // USER, CONTENT, REPORT, SETTINGS, AI
+  targetId    String
+  
+  // Details
+  metadata    Json?
+  ip          String?
+  userAgent   String?
+  
+  createdAt   DateTime @default(now())
+
+  @@index([actorId])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model AIEventLog {
+  id           String      @id @default(cuid())
+  type         AIEventType
+  model        String
+  
+  // Token usage
+  inputTokens  Int
+  outputTokens Int
+  totalTokens  Int
+  
+  // Performance
+  latencyMs    Int
+  
+  // Actor (optional - can be system)
+  actorId      String?
+  actor        User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  
+  // Result
+  success      Boolean
+  error        String?
+  
+  // Sanitized metadata (no PII)
+  metadata     Json?
+  
+  createdAt    DateTime @default(now())
+
+  @@index([type])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("ai_event_logs")
+}
+
+// ==================== SETTINGS MODEL ====================
+
+model SystemSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}

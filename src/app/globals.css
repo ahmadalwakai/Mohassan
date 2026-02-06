@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  /* Mohassan Design Tokens */
+  --bg-primary: #121212;
+  --bg-secondary: #1E1E1E;
+  --bg-elevated: #252525;
+  
+  --brand-glow: #00FF00;
+  --brand-glow-muted: #00CC00;
+  --brand-header: #007BFF;
+  --brand-footer: #343A40;
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #B0B0B0;
+  --text-muted: #6C757D;
+  
+  --border-default: #2D2D2D;
+  --border-hover: #00FF00;
+  
+  --font-arabic: 'Noto Sans Arabic', 'Noto Sans', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  direction: rtl;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-arabic);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--brand-glow);
+}
+
+/* Selection */
+::selection {
+  background-color: var(--brand-glow);
+  color: var(--bg-primary);
+}
+
+/* Focus styles */
+:focus-visible {
+  outline: 2px solid var(--brand-glow);
+  outline-offset: 2px;
+}
+
+/* RTL adjustments */
+[dir="rtl"] {
+  text-align: right;
+}
