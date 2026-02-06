@@ -94,3 +94,95 @@ export async function sendVerificationEmail(
     logVerificationFallback(email, name, verificationUrl, 'failed');
   }
 }
+
+/**
+ * Generate role change notification email HTML
+ */
+function generateRoleChangeEmailHTML(name: string, newRole: string, roleArabic: string): string {
+  const roleColors: Record<string, string> = {
+    'ADMIN': '#FF6B6B',
+    'MODERATOR': '#4ECDC4',
+    'USER': '#95E1D3',
+  };
+  const color = roleColors[newRole] || '#00FF00';
+  
+  return `
+    <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h1 style="color: ${color};">مرحباً ${name}!</h1>
+      <p>نود إعلامك بأنه تم تحديث صلاحياتك على منصة موحسن.</p>
+      <div style="background-color: #1a1a1a; padding: 20px; border-radius: 8px; margin: 20px 0; border-right: 4px solid ${color};">
+        <p style="color: #fff; margin: 0;">صلاحيتك الجديدة: <strong style="color: ${color};">${roleArabic}</strong></p>
+      </div>
+      ${newRole === 'ADMIN' ? `
+      <p style="color: #666;">كمسؤول، لديك الآن صلاحيات كاملة لإدارة المنصة بما في ذلك:</p>
+      <ul style="color: #666;">
+        <li>إدارة المستخدمين والصلاحيات</li>
+        <li>مراجعة وإدارة المحتوى</li>
+        <li>الوصول للوحة التحكم الكاملة</li>
+        <li>إعدادات النظام</li>
+      </ul>
+      ` : ''}
+      ${newRole === 'MODERATOR' ? `
+      <p style="color: #666;">كمشرف، لديك الآن صلاحيات لـ:</p>
+      <ul style="color: #666;">
+        <li>مراجعة المحتوى المعلق</li>
+        <li>الموافقة أو رفض المنشورات</li>
+        <li>إدارة البلاغات</li>
+      </ul>
+      ` : ''}
+      <p style="color: #666;">إذا كان لديك أي استفسار، لا تتردد في التواصل معنا.</p>
+      <p style="color: #666; margin-top: 20px;">مع تحيات فريق موحسن</p>
+    </div>
+  `;
+}
+
+/**
+ * Send role change notification email
+ */
+export async function sendRoleChangeEmail(
+  email: string,
+  name: string,
+  newRole: 'USER' | 'MODERATOR' | 'ADMIN'
+): Promise<void> {
+  const roleArabicMap: Record<string, string> = {
+    'ADMIN': 'مسؤول',
+    'MODERATOR': 'مشرف',
+    'USER': 'مستخدم',
+  };
+  const roleArabic = roleArabicMap[newRole] || newRole;
+
+  console.log('[EMAIL_ROLE_CHANGE_START] Recipient:', email, '| New Role:', newRole);
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log('[EMAIL_ROLE_CHANGE_SKIP] No RESEND_API_KEY configured');
+    console.log('======================================');
+    console.log('ROLE CHANGE EMAIL (Resend not configured)');
+    console.log(`To: ${email}`);
+    console.log(`Name: ${name}`);
+    console.log(`New Role: ${newRole} (${roleArabic})`);
+    console.log('======================================');
+    return;
+  }
+
+  try {
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const fromAddress = process.env.EMAIL_FROM || 'Mohassan <noreply@mohassansy.com>';
+
+    const result = await resend.emails.send({
+      from: fromAddress,
+      to: email,
+      subject: `تحديث صلاحياتك على موحسن - ${roleArabic}`,
+      html: generateRoleChangeEmailHTML(name, newRole, roleArabic),
+    });
+
+    if (result.error) {
+      console.error('[EMAIL_ROLE_CHANGE_FAIL] Resend API error:', result.error.message);
+      return;
+    }
+
+    console.log('[EMAIL_ROLE_CHANGE_OK] Response:', JSON.stringify(result));
+  } catch (error) {
+    console.error('[EMAIL_ROLE_CHANGE_FAIL] Error:', error);
+  }
+}

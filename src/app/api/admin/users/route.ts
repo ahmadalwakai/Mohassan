@@ -18,17 +18,31 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
     const search = searchParams.get('search') || '';
+    const roleFilter = searchParams.get('role');
 
     const skip = (page - 1) * limit;
 
+    // Build where clause
+    const whereClause: Record<string, unknown> = {};
+    
+    // Search filter
+    if (search) {
+      whereClause.OR = [
+        { email: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Role filter
+    if (roleFilter === 'staff') {
+      whereClause.role = { in: ['ADMIN', 'MODERATOR'] };
+    } else if (roleFilter === 'ADMIN' || roleFilter === 'MODERATOR' || roleFilter === 'USER') {
+      whereClause.role = roleFilter;
+    }
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
-        where: {
-          OR: [
-            { email: { contains: search, mode: 'insensitive' } },
-            { name: { contains: search, mode: 'insensitive' } },
-          ],
-        },
+        where: whereClause,
         select: {
           id: true,
           email: true,
@@ -42,14 +56,7 @@ export async function GET(request: NextRequest) {
         take: limit,
         orderBy: { createdAt: 'desc' },
       }),
-      prisma.user.count({
-        where: {
-          OR: [
-            { email: { contains: search, mode: 'insensitive' } },
-            { name: { contains: search, mode: 'insensitive' } },
-          ],
-        },
-      }),
+      prisma.user.count({ where: whereClause }),
     ]);
 
     return NextResponse.json({
