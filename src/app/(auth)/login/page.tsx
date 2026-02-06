@@ -8,7 +8,8 @@ import { loginWithCredentials, loginWithGoogle } from '@/core/auth/actions';
 
 function LoginForm() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const cb = searchParams.get('callbackUrl');
+  const callbackUrl = cb && cb.startsWith('/') && !cb.startsWith('//') ? cb : '/dashboard';
   const error = searchParams.get('error');
   const registered = searchParams.get('registered');
   

@@ -54,8 +54,11 @@ export async function sendVerificationEmail(
 ): Promise<void> {
   const verificationUrl = `${process.env.NEXTAUTH_URL}/api/auth/verify-email?token=${token}`;
 
+  console.log('[EMAIL_SEND_START] Recipient:', email, '| Route: sendVerificationEmail | RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+
   // Check if Resend API key is configured
   if (!process.env.RESEND_API_KEY) {
+    console.log('[EMAIL_SEND_SKIP] No RESEND_API_KEY configured');
     logVerificationFallback(email, name, verificationUrl, 'not_configured');
     return;
   }
@@ -65,14 +68,28 @@ export async function sendVerificationEmail(
     const { Resend } = await import('resend');
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    await resend.emails.send({
-      from: 'Mohassan <noreply@mohassan.com>',
+    // Use EMAIL_FROM if set, otherwise use verified domain
+    const fromAddress = process.env.EMAIL_FROM || 'Mohassan <noreply@mohassansy.com>';
+    console.log('[EMAIL_SEND_ATTEMPT] from:', fromAddress, '| to:', email);
+
+    const result = await resend.emails.send({
+      from: fromAddress,
       to: email,
       subject: 'تأكيد بريدك الإلكتروني - موحسن',
       html: generateVerificationEmailHTML(verificationUrl, name),
     });
+
+    // Check for API-level errors (Resend doesn't throw for validation errors)
+    if (result.error) {
+      console.error('[EMAIL_SEND_FAIL] Resend API error:', result.error.message);
+      logVerificationFallback(email, name, verificationUrl, 'failed');
+      return;
+    }
+
+    console.log('[EMAIL_SEND_OK] Response:', JSON.stringify(result));
   } catch (error) {
-    console.error('Failed to send verification email via Resend:', error);
+    console.error('[EMAIL_SEND_FAIL] Error:', error);
+    console.error('[EMAIL_SEND_FAIL] Stack:', error instanceof Error ? error.stack : 'N/A');
     logVerificationFallback(email, name, verificationUrl, 'failed');
   }
 }

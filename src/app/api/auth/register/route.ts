@@ -112,7 +112,9 @@ export async function POST(request: NextRequest) {
     });
 
     // Send verification email
+    console.log('[REGISTER] About to call sendVerificationEmail for:', sanitizedEmail);
     await sendVerificationEmail(sanitizedEmail, token, sanitizedName);
+    console.log('[REGISTER] sendVerificationEmail completed');
 
     return NextResponse.json(
       {
