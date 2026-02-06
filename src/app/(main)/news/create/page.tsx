@@ -18,7 +18,7 @@ export default async function CreateNewsPage() {
   const session = await auth();
   
   if (!session?.user) {
-    redirect('/auth/signin?callbackUrl=/news/create');
+    redirect('/login?callbackUrl=/news/create');
   }
   
   return (

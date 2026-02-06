@@ -20,7 +20,7 @@ export default async function CreateContentPage() {
   const session = await auth();
   
   if (!session?.user) {
-    redirect('/auth/signin?callbackUrl=/create');
+    redirect('/login?callbackUrl=/create');
   }
   
   return (

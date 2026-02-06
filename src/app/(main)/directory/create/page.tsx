@@ -18,7 +18,7 @@ export default async function CreateDirectoryPage() {
   const session = await auth();
   
   if (!session?.user) {
-    redirect('/auth/signin?callbackUrl=/directory/create');
+    redirect('/login?callbackUrl=/directory/create');
   }
   
   return (

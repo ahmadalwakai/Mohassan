@@ -18,7 +18,7 @@ export default async function CreateMarketPage() {
   const session = await auth();
   
   if (!session?.user) {
-    redirect('/auth/signin?callbackUrl=/market/create');
+    redirect('/login?callbackUrl=/market/create');
   }
   
   return (

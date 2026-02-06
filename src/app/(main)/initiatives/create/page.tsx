@@ -18,7 +18,7 @@ export default async function CreateInitiativePage() {
   const session = await auth();
   
   if (!session?.user) {
-    redirect('/auth/signin?callbackUrl=/initiatives/create');
+    redirect('/login?callbackUrl=/initiatives/create');
   }
   
   return (

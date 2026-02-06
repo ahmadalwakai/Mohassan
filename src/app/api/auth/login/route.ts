@@ -1,3 +1,4 @@
+// NOTE: This route is currently unused. Credentials login is handled via NextAuth signIn('credentials').
 import { NextRequest, NextResponse } from 'next/server';
 import { compare } from 'bcryptjs';
 import { prisma } from '@/core/db/prisma';

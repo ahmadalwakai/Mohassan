@@ -18,7 +18,7 @@ export default async function CreateCommunityPage() {
   const session = await auth();
   
   if (!session?.user) {
-    redirect('/auth/signin?callbackUrl=/community/create');
+    redirect('/login?callbackUrl=/community/create');
   }
   
   return (

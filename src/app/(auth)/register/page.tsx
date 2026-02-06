@@ -198,6 +198,7 @@ export default function RegisterPage() {
             </HStack>
 
             <Button
+              type="button"
               w="full"
               variant="outline"
               borderColor="border.default"

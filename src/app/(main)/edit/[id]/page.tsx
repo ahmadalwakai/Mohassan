@@ -35,7 +35,7 @@ export default async function EditContentPage({ params }: EditContentPageProps) 
   const session = await auth();
   
   if (!session?.user) {
-    redirect(`/auth/signin?callbackUrl=/edit/${id}`);
+    redirect(`/login?callbackUrl=/edit/${id}`);
   }
   
   // Fetch content
