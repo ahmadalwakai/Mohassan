@@ -1,5 +1,10 @@
+'use client';
+
 import { Box, Container, Heading, HStack, VStack, Text } from '@chakra-ui/react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -14,6 +19,26 @@ const adminNavItems = [
 ];
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated' && session?.user?.role !== 'ADMIN') {
+      router.push('/');
+    }
+  }, [status, session, router]);
+
+  if (status === 'loading') {
+    return (
+      <Box minH="100vh" bg="bg.primary" display="flex" alignItems="center" justifyContent="center">
+        <Text>جاري التحميل...</Text>
+      </Box>
+    );
+  }
+
+  if (!session?.user || session.user.role !== 'ADMIN') return null;
   return (
     <Box minH="100vh" bg="bg.primary">
       {/* Header */}

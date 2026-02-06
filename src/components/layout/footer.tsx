@@ -4,7 +4,7 @@
  * Footer Component
  */
 
-import { Box, Container, HStack, VStack, Text, SimpleGrid } from '@chakra-ui/react';
+import { Box, Container, HStack, VStack, Text, SimpleGrid, Image } from '@chakra-ui/react';
 import Link from 'next/link';
 
 const footerLinks = {
@@ -38,31 +38,26 @@ const footerLinks = {
 
 export const Footer = () => {
   return (
-    <Box as="footer" bg="gray.900" borderTop="1px solid" borderColor="gray.800" mt="auto">
-      <Container maxW="7xl" py={12}>
+    <Box as="footer" bg="rgba(9, 9, 11, 0.28)" borderTop="1px solid rgba(255,255,255,0.10)" mt="auto" backdropFilter="blur(10px)" boxShadow="0 -10px 30px rgba(0,0,0,0.25)">
+      <Container maxW="7xl" py={12} px={{ base: 4, md: 0 }}>
         <SimpleGrid columns={{ base: 1, sm: 2, md: 4 }} gap={8}>
           {/* Brand */}
           <VStack align="start" gap={4}>
             <HStack gap={2}>
-              <Box
-                w={10}
-                h={10}
-                bg="brand.500"
+              <Image
+                src="/brand/logo-512.png"
+                alt="Mohassan logo"
+                w={12}
+                h={12}
                 borderRadius="lg"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                fontWeight="bold"
-                color="black"
-                fontSize="xl"
-              >
-                م
-              </Box>
-              <Text fontSize="xl" fontWeight="bold" color="white">
+                objectFit="cover"
+                boxShadow="0 0 16px rgba(249,115,22,0.5), 0 0 8px rgba(249,115,22,0.3)"
+              />
+              <Text fontSize="xl" fontWeight="bold" color="rgba(255,255,255,0.92)">
                 موحسن
               </Text>
             </HStack>
-            <Text color="gray.500" fontSize="sm" maxW="250px">
+            <Text color="rgba(255,255,255,0.54)" fontSize="sm" maxW="250px" lineHeight="1.6">
               منصة عربية مجتمعية تجمع الأخبار والدليل والسوق والمبادرات في مكان واحد.
             </Text>
             {/* Social Links */}
@@ -88,16 +83,16 @@ export const Footer = () => {
           {/* Link Sections */}
           {Object.values(footerLinks).map((section) => (
             <VStack key={section.title} align="start" gap={3}>
-              <Text fontWeight="semibold" color="white">
+              <Text fontWeight="semibold" color="rgba(255,255,255,0.92)">
                 {section.title}
               </Text>
               {section.links.map((link) => (
                 <Link key={link.href} href={link.href}>
                   <Text
-                    color="gray.500"
+                    color="rgba(255,255,255,0.54)"
                     fontSize="sm"
-                    _hover={{ color: 'brand.400' }}
-                    transition="color 0.2s"
+                    transition="color 200ms"
+                    _hover={{ color: 'rgba(249,115,22,0.9)' }}
                   >
                     {link.label}
                   </Text>
@@ -111,11 +106,10 @@ export const Footer = () => {
         <Box
           mt={12}
           pt={8}
-          borderTop="1px solid"
-          borderColor="gray.800"
+          borderTop="1px solid rgba(255,255,255,0.08)"
           textAlign="center"
         >
-          <Text color="gray.600" fontSize="sm">
+          <Text color="rgba(255,255,255,0.40)" fontSize="sm">
             © {new Date().getFullYear()} موحسن. جميع الحقوق محفوظة.
           </Text>
         </Box>
@@ -138,9 +132,9 @@ const SocialLink = ({
     <Box
       p={2}
       borderRadius="lg"
-      color="gray.500"
-      _hover={{ color: 'brand.400', bg: 'whiteAlpha.100' }}
-      transition="all 0.2s"
+      color="rgba(255,255,255,0.54)"
+      transition="all 200ms"
+      _hover={{ color: 'rgba(249,115,22,0.9)', bg: 'rgba(255,255,255,0.06)' }}
     >
       {children}
     </Box>

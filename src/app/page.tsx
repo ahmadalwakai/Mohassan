@@ -1,16 +1,29 @@
-import { Box, Container, Heading, Text, VStack, HStack, Button } from '@chakra-ui/react';
+import { Box, Container, Heading, Text, VStack, HStack, Button, Image } from '@chakra-ui/react';
 import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <Box minH="100vh" bg="bg.primary">
+    <Box minH="100vh" bg="transparent">
       {/* Header */}
-      <Box as="header" bg="brand.header" py={4} px={6}>
+      <Box as="header" bg="rgba(9, 9, 11, 0.35)" backdropFilter="blur(10px)" borderBottom="1px solid rgba(255,255,255,0.10)" boxShadow="0 10px 30px rgba(0,0,0,0.25)" py={4} px={6}>
         <Container maxW="container.xl">
           <HStack justify="space-between" align="center">
-            <Heading size="lg" color="text.primary">
-              موحسن
-            </Heading>
+            <Link href="/">
+              <HStack gap={2} cursor="pointer" transition="transform 200ms" _hover={{ transform: 'scale(1.02)' }} me={4}>
+                <Image
+                  src="/brand/logo-512.png"
+                  alt="Mohassan logo"
+                  w={12}
+                  h={12}
+                  borderRadius="lg"
+                  objectFit="cover"
+                  boxShadow="0 0 16px rgba(249,115,22,0.5), 0 0 8px rgba(249,115,22,0.3)"
+                />
+                <Heading size="lg" color="text.primary">
+                  موحسن
+                </Heading>
+              </HStack>
+            </Link>
             <HStack gap={4}>
               <Link href="/login">
                 <Button variant="ghost" color="text.primary">
@@ -18,7 +31,7 @@ export default function HomePage() {
                 </Button>
               </Link>
               <Link href="/register">
-                <Button bg="brand.glow" color="text.inverse" _hover={{ bg: 'brand.glowMuted' }}>
+                <Button bg="#7C3AED" color="white" _hover={{ bg: '#6D28D9' }}>
                   إنشاء حساب
                 </Button>
               </Link>
@@ -39,12 +52,24 @@ export default function HomePage() {
           </Text>
           <HStack gap={4}>
             <Link href="/news">
-              <Button size="lg" bg="brand.header" color="text.primary" _hover={{ bg: 'brand.headerHover' }}>
+              <Button 
+                size="lg" 
+                bg="linear-gradient(135deg, #F97316, #7C3AED)"
+                color="white"
+                _hover={{ opacity: 0.9, transform: 'translateY(-2px)' }}
+                transition="all 200ms"
+              >
                 تصفح الأخبار
               </Button>
             </Link>
             <Link href="/directory">
-              <Button size="lg" variant="outline" borderColor="brand.glow" color="brand.glow">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                borderColor="#7C3AED" 
+                color="#7C3AED"
+                _hover={{ bg: 'rgba(124,58,237,0.1)' }}
+              >
                 استكشف الدليل
               </Button>
             </Link>
@@ -69,18 +94,18 @@ export default function HomePage() {
             ].map((feature) => (
               <Link key={feature.href} href={feature.href}>
                 <Box
-                  bg="bg.secondary"
+                  bg="rgba(255,255,255,0.06)"
                   p={6}
                   borderRadius="lg"
-                  borderWidth={1}
-                  borderColor="border.default"
+                  border="1px solid rgba(249,115,22,0.35)"
+                  boxShadow="0 0 12px rgba(249,115,22,0.15), 0 0 4px rgba(249,115,22,0.1)"
                   w="280px"
                   textAlign="center"
                   cursor="pointer"
                   transition="all 0.2s"
                   _hover={{
-                    borderColor: 'brand.glow',
-                    boxShadow: 'glow',
+                    borderColor: 'rgba(249,115,22,0.6)',
+                    boxShadow: '0 0 20px rgba(249,115,22,0.25), 0 0 8px rgba(249,115,22,0.15)',
                     transform: 'translateY(-4px)',
                   }}
                 >
@@ -96,7 +121,7 @@ export default function HomePage() {
       </Container>
 
       {/* Footer */}
-      <Box as="footer" bg="brand.footer" py={8} mt={16}>
+      <Box as="footer" bg="rgba(9, 9, 11, 0.28)" backdropFilter="blur(10px)" borderTop="1px solid rgba(255,255,255,0.10)" boxShadow="0 -10px 30px rgba(0,0,0,0.25)" py={8} mt={16}>
         <Container maxW="container.xl">
           <VStack gap={4}>
             <Text color="text.secondary">

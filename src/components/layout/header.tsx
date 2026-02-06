@@ -5,7 +5,7 @@
  * Main navigation header
  */
 
-import { Box, Container, HStack, Text, Image, Menu, Portal } from '@chakra-ui/react';
+import { Box, Container, HStack, Text, Image } from '@chakra-ui/react';
 import Link from 'next/link';
 import { useSession, signOut } from 'next-auth/react';
 import { useState } from 'react';
@@ -29,35 +29,30 @@ export const Header = () => {
       as="header"
       position="sticky"
       top={0}
-      zIndex={100}
-      bg="gray.900"
-      borderBottom="1px solid"
-      borderColor="gray.800"
+      zIndex={1000}
+      bg="rgba(9, 9, 11, 0.35)"
+      borderBottom="1px solid rgba(255,255,255,0.10)"
       backdropFilter="blur(10px)"
+      boxShadow="0 10px 30px rgba(0,0,0,0.25)"
     >
       <Container maxW="7xl">
-        <HStack h={16} justify="space-between">
+        <HStack h={16} justify="space-between" px={{ base: 4, md: 0 }}>
           {/* Logo */}
           <Link href="/">
-            <HStack gap={2} cursor="pointer">
-              <Box
-                w={10}
-                h={10}
-                bg="brand.500"
+            <HStack gap={2} cursor="pointer" transition="transform 200ms" _hover={{ transform: 'scale(1.02)' }} me={4}>
+              <Image
+                src="/brand/logo-512.png"
+                alt="Mohassan logo"
+                w={12}
+                h={12}
                 borderRadius="lg"
-                display="flex"
-                alignItems="center"
-                justifyContent="center"
-                fontWeight="bold"
-                color="black"
-                fontSize="xl"
-              >
-                م
-              </Box>
+                objectFit="cover"
+                boxShadow="0 0 16px rgba(249,115,22,0.5), 0 0 8px rgba(249,115,22,0.3)"
+              />
               <Text
                 fontSize="xl"
                 fontWeight="bold"
-                color="white"
+                color="rgba(255,255,255,0.92)"
                 display={{ base: 'none', sm: 'block' }}
               >
                 موحسن
@@ -77,12 +72,26 @@ export const Header = () => {
                   px={4}
                   py={2}
                   borderRadius="lg"
-                  color="gray.300"
+                  color="rgba(255,255,255,0.68)"
                   fontWeight="medium"
-                  transition="all 0.2s"
+                  transition="all 200ms ease-in-out"
+                  position="relative"
                   _hover={{
-                    bg: 'whiteAlpha.100',
-                    color: 'white',
+                    color: 'rgba(255,255,255,0.92)',
+                    _after: {
+                      width: '100%',
+                    },
+                  }}
+                  _after={{
+                    content: '""',
+                    position: 'absolute',
+                    bottom: '6px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: '0%',
+                    height: '2px',
+                    background: 'linear-gradient(90deg, #F97316, #7C3AED)',
+                    transition: 'width 200ms ease-in-out',
                   }}
                 >
                   {link.label}
@@ -94,7 +103,7 @@ export const Header = () => {
           {/* Auth Section */}
           <HStack gap={3}>
             {status === 'loading' ? (
-              <Box w={8} h={8} borderRadius="full" bg="gray.700" />
+              <Box w={8} h={8} borderRadius="full" bg="rgba(255,255,255,0.06)" />
             ) : session ? (
               <Box position="relative">
                 <HStack
@@ -103,7 +112,12 @@ export const Header = () => {
                   onClick={() => setIsMenuOpen(!isMenuOpen)}
                   p={1}
                   borderRadius="lg"
-                  _hover={{ bg: 'whiteAlpha.100' }}
+                  transition="all 200ms"
+                  _hover={{ 
+                    bg: 'rgba(255,255,255,0.08)',
+                    borderColor: 'rgba(124,58,237,0.4)',
+                  }}
+                  border="1px solid transparent"
                 >
                   <Avatar
                     src={session.user?.image}
@@ -111,7 +125,7 @@ export const Header = () => {
                     size="sm"
                   />
                   <Text
-                    color="gray.300"
+                    color="rgba(255,255,255,0.68)"
                     fontSize="sm"
                     display={{ base: 'none', sm: 'block' }}
                   >
@@ -134,21 +148,22 @@ export const Header = () => {
                       top="100%"
                       left={0}
                       mt={2}
-                      bg="gray.800"
-                      border="1px solid"
-                      borderColor="gray.700"
+                      bg="rgba(11,16,32,0.9)"
+                      border="1px solid rgba(255,255,255,0.08)"
                       borderRadius="lg"
                       py={2}
                       minW="200px"
-                      shadow="xl"
+                      shadow="0 10px 25px -5px rgba(0, 0, 0, 0.5)"
+                      backdropFilter="blur(10px)"
                       zIndex={10}
                     >
                       <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
                         <Box
                           px={4}
                           py={2}
-                          color="gray.300"
-                          _hover={{ bg: 'whiteAlpha.100', color: 'white' }}
+                          color="rgba(255,255,255,0.68)"
+                          transition="all 200ms"
+                          _hover={{ bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.92)' }}
                         >
                           لوحة التحكم
                         </Box>
@@ -157,8 +172,9 @@ export const Header = () => {
                         <Box
                           px={4}
                           py={2}
-                          color="gray.300"
-                          _hover={{ bg: 'whiteAlpha.100', color: 'white' }}
+                          color="rgba(255,255,255,0.68)"
+                          transition="all 200ms"
+                          _hover={{ bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.92)' }}
                         >
                           الملف الشخصي
                         </Box>
@@ -167,23 +183,25 @@ export const Header = () => {
                         <Box
                           px={4}
                           py={2}
-                          color="gray.300"
-                          _hover={{ bg: 'whiteAlpha.100', color: 'white' }}
+                          color="rgba(255,255,255,0.68)"
+                          transition="all 200ms"
+                          _hover={{ bg: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.92)' }}
                         >
                           الإعدادات
                         </Box>
                       </Link>
                       <Box
                         h="1px"
-                        bg="gray.700"
+                        bg="rgba(255,255,255,0.08)"
                         my={2}
                       />
                       <Box
                         px={4}
                         py={2}
-                        color="red.400"
+                        color="rgba(220,53,69,0.9)"
                         cursor="pointer"
-                        _hover={{ bg: 'whiteAlpha.100' }}
+                        transition="all 200ms"
+                        _hover={{ bg: 'rgba(255,255,255,0.06)' }}
                         onClick={() => signOut({ callbackUrl: '/' })}
                       >
                         تسجيل الخروج
@@ -213,7 +231,9 @@ export const Header = () => {
               p={2}
               borderRadius="lg"
               cursor="pointer"
-              _hover={{ bg: 'whiteAlpha.100' }}
+              color="rgba(255,255,255,0.92)"
+              transition="all 200ms"
+              _hover={{ bg: 'rgba(255,255,255,0.08)' }}
             >
               <svg
                 width="24"

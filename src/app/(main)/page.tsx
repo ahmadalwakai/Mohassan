@@ -40,33 +40,92 @@ export default async function HomePage() {
     <Box>
       {/* Hero Section */}
       <Box
-        bg="linear-gradient(135deg, rgba(0,255,0,0.1) 0%, rgba(0,0,0,0) 50%)"
-        py={{ base: 12, md: 20 }}
+        position="relative"
+        py={{ base: 8, md: 14 }}
+        overflow="hidden"
       >
-        <Container maxW="7xl">
-          <VStack gap={6} textAlign="center" maxW="3xl" mx="auto">
+        {/* Animated background blob */}
+        <Box
+          position="absolute"
+          width="400px"
+          height="400px"
+          borderRadius="full"
+          background="radial-gradient(circle, rgba(249,115,22,0.22) 0%, transparent 70%)"
+          left="-10%"
+          top="10%"
+          animation="none"
+          filter="blur(40px)"
+          pointerEvents="none"
+          zIndex={0}
+        />
+        <Box
+          position="absolute"
+          width="350px"
+          height="350px"
+          borderRadius="full"
+          background="radial-gradient(circle, rgba(124,58,237,0.22) 0%, transparent 70%)"
+          right="-5%"
+          bottom="10%"
+          animation="none"
+          filter="blur(40px)"
+          pointerEvents="none"
+          zIndex={0}
+        />
+        
+        <Container maxW="7xl" position="relative" zIndex={1}>
+          <VStack gap={5} textAlign="center" maxW="3xl" mx="auto">
             <Text
               fontSize={{ base: '3xl', md: '5xl' }}
               fontWeight="bold"
-              color="white"
+              background="linear-gradient(90deg, #F97316, #7C3AED)"
+              bgClip="text"
+              color="transparent"
               lineHeight="shorter"
+              css={{
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
             >
-              مرحباً بك في{' '}
-              <Text as="span" color="brand.400">
-                موحسن
-              </Text>
+              مرحباً بك في موحسن
             </Text>
-            <Text fontSize={{ base: 'lg', md: 'xl' }} color="gray.400">
+            <Text fontSize={{ base: 'lg', md: 'xl' }} color="rgba(255,255,255,0.68)">
               منصة مجتمعية متكاملة تجمع الأخبار والدليل والسوق والمبادرات
               في مكان واحد
             </Text>
             <HStack gap={4} flexWrap="wrap" justify="center">
               <Link href="/register">
-                <Button size="lg">ابدأ الآن</Button>
+                <Button 
+                  size="lg" 
+                  bg="linear-gradient(135deg, #F97316, #7C3AED)"
+                  color="white"
+                  _hover={{
+                    boxShadow: '0 0 24px rgba(249,115,22,0.3)',
+                    transform: 'translateY(-2px)',
+                  }}
+                  transition="all 200ms ease-in-out"
+                >
+                  ابدأ الآن
+                </Button>
               </Link>
-              <Link href="/about">
-                <Button variant="outline" size="lg">
-                  تعرف علينا
+              <Link href="/market">
+                <Button 
+                  variant="ghost" 
+                  size="lg"
+                  bg="rgba(255,255,255,0.08)"
+                  border="1px solid rgba(255,255,255,0.18)"
+                  color="rgba(255,255,255,0.92)"
+                  backdropFilter="blur(8px)"
+                  _hover={{
+                    bg: 'rgba(255,255,255,0.12)',
+                    borderColor: 'rgba(124,58,237,0.5)',
+                    transform: 'translateY(-2px)',
+                  }}
+                  _focus={{
+                    boxShadow: '0 0 0 2px rgba(124,58,237,0.4)',
+                  }}
+                  transition="all 200ms ease-in-out"
+                >
+                  استكشف السوق
                 </Button>
               </Link>
             </HStack>
@@ -75,7 +134,7 @@ export default async function HomePage() {
       </Box>
 
       {/* Quick Access */}
-      <Container maxW="7xl" py={12}>
+      <Container maxW="7xl" py={8} px={{ base: 4, md: 0 }}>
         <SimpleGrid columns={{ base: 2, md: 3, lg: 5 }} gap={4}>
           {quickSections.map((section) => (
             <Link key={section.href} href={section.href}>
@@ -84,10 +143,10 @@ export default async function HomePage() {
                   <Text fontSize="3xl" mb={2}>
                     {section.icon}
                   </Text>
-                  <Text fontWeight="semibold" color="white" mb={1}>
+                  <Text fontWeight="semibold" color="rgba(255,255,255,0.92)" mb={1}>
                     {section.label}
                   </Text>
-                  <Text fontSize="sm" color="gray.500">
+                  <Text fontSize="sm" color="rgba(255,255,255,0.54)">
                     {section.description}
                   </Text>
                 </CardBody>
@@ -99,10 +158,10 @@ export default async function HomePage() {
 
       {/* Latest News */}
       {news && news.items.length > 0 && (
-        <Box bg="gray.900" py={12}>
-          <Container maxW="7xl">
+        <Box bg="rgba(11,16,32,0.4)" py={12} backdropFilter="blur(4px)">
+          <Container maxW="7xl" px={{ base: 4, md: 0 }}>
             <HStack justify="space-between" mb={8}>
-              <Text fontSize="2xl" fontWeight="bold" color="white">
+              <Text fontSize="2xl" fontWeight="bold" color="rgba(255,255,255,0.92)">
                 📰 آخر الأخبار
               </Text>
               <Link href="/news">
@@ -128,9 +187,9 @@ export default async function HomePage() {
 
       {/* Community Posts */}
       {community && community.items.length > 0 && (
-        <Container maxW="7xl" py={12}>
+        <Container maxW="7xl" py={12} px={{ base: 4, md: 0 }}>
           <HStack justify="space-between" mb={8}>
-            <Text fontSize="2xl" fontWeight="bold" color="white">
+            <Text fontSize="2xl" fontWeight="bold" color="rgba(255,255,255,0.92)">
               👥 من المجتمع
             </Text>
             <Link href="/community">
@@ -155,10 +214,10 @@ export default async function HomePage() {
 
       {/* Initiatives */}
       {initiatives && initiatives.items.length > 0 && (
-        <Box bg="gray.900" py={12}>
-          <Container maxW="7xl">
+        <Box bg="rgba(11,16,32,0.4)" py={12} backdropFilter="blur(4px)">
+          <Container maxW="7xl" px={{ base: 4, md: 0 }}>
             <HStack justify="space-between" mb={8}>
-              <Text fontSize="2xl" fontWeight="bold" color="white">
+              <Text fontSize="2xl" fontWeight="bold" color="rgba(255,255,255,0.92)">
                 🌟 مبادرات مميزة
               </Text>
               <Link href="/initiatives">
@@ -184,18 +243,29 @@ export default async function HomePage() {
       )}
 
       {/* CTA */}
-      <Container maxW="7xl" py={16}>
+      <Container maxW="7xl" py={16} px={{ base: 4, md: 0 }}>
         <Card variant="glow">
           <CardBody py={12} textAlign="center">
-            <Text fontSize="2xl" fontWeight="bold" color="white" mb={4}>
+            <Text fontSize="2xl" fontWeight="bold" color="rgba(255,255,255,0.92)" mb={4}>
               هل لديك محتوى تود مشاركته؟
             </Text>
-            <Text color="gray.400" mb={6} maxW="lg" mx="auto">
+            <Text color="rgba(255,255,255,0.68)" mb={6} maxW="lg" mx="auto">
               انضم إلى مجتمع موحسن وشارك أخبارك ومبادراتك وإعلاناتك
               مع الآلاف من المستخدمين
             </Text>
             <Link href="/create">
-              <Button size="lg">أضف محتوى جديد</Button>
+              <Button 
+                size="lg"
+                bg="linear-gradient(135deg, #F97316, #7C3AED)"
+                color="white"
+                _hover={{
+                  boxShadow: '0 0 24px rgba(249,115,22,0.3)',
+                  transform: 'translateY(-2px)',
+                }}
+                transition="all 200ms ease-in-out"
+              >
+                أضف محتوى جديد
+              </Button>
             </Link>
           </CardBody>
         </Card>

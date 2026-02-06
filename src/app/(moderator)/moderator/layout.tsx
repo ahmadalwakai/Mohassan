@@ -1,5 +1,10 @@
+'use client';
+
 import { Box, Container, Heading, HStack, VStack, Text } from '@chakra-ui/react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 interface ModeratorLayoutProps {
   children: React.ReactNode;
@@ -13,6 +18,26 @@ const modNavItems = [
 ];
 
 export default function ModeratorLayout({ children }: ModeratorLayoutProps) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else if (status === 'authenticated' && !['MODERATOR', 'ADMIN'].includes(session?.user?.role)) {
+      router.push('/');
+    }
+  }, [status, session, router]);
+
+  if (status === 'loading') {
+    return (
+      <Box minH="100vh" bg="bg.primary" display="flex" alignItems="center" justifyContent="center">
+        <Text>جاري التحميل...</Text>
+      </Box>
+    );
+  }
+
+  if (!session?.user || !['MODERATOR', 'ADMIN'].includes(session.user.role)) return null;
   return (
     <Box minH="100vh" bg="bg.primary">
       {/* Header */}

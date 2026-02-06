@@ -29,3 +29,8 @@ export type { ModalProps, ConfirmModalProps } from './modal';
 
 export { Pagination, PaginationInfo } from './pagination';
 export type { PaginationProps } from './pagination';
+export { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } from './table';
+export type { TableProps, TableHeaderProps, TableBodyProps, TableRowProps, TableHeadCellProps, TableCellProps } from './table';
+
+export { Select } from './select';
+export type { SelectProps } from './select';

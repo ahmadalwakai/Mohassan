@@ -1,5 +1,10 @@
+'use client';
+
 import { Box, Container, Heading, HStack, VStack, Text } from '@chakra-ui/react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 interface AccountLayoutProps {
   children: React.ReactNode;
@@ -13,6 +18,24 @@ const accountNavItems = [
 ];
 
 export default function AccountLayout({ children }: AccountLayoutProps) {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  if (status === 'loading') {
+    return (
+      <Box minH="100vh" bg="bg.primary" display="flex" alignItems="center" justifyContent="center">
+        <Text>جاري التحميل...</Text>
+      </Box>
+    );
+  }
+
+  if (!session?.user) return null;
   return (
     <Box minH="100vh" bg="bg.primary">
       {/* Header */}

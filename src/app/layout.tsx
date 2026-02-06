@@ -20,10 +20,18 @@ export const metadata: Metadata = {
   authors: [{ name: 'Mohassan Team' }],
   creator: 'Mohassan',
   metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
+  icons: {
+    icon: [
+      { url: '/brand/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/brand/favicon-16.png', sizes: '16x16', type: 'image/png' },
+    ],
+    apple: { url: '/brand/logo-180.png', sizes: '180x180', type: 'image/png' },
+  },
   openGraph: {
     type: 'website',
     locale: 'ar_SA',
     siteName: 'موحسن - Mohassan',
+    images: [{ url: '/brand/og.png', width: 1200, height: 630, alt: 'Mohassan' }],
   },
   robots: {
     index: true,
@@ -46,7 +54,7 @@ export default function RootLayout({
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <body className={`${notoSansArabic.variable} antialiased`}>
         <Providers>
-          <div className="min-h-screen flex flex-col bg-gray-950 text-white">
+          <div className="min-h-screen flex flex-col bg-transparent text-white">
             {children}
           </div>
         </Providers>

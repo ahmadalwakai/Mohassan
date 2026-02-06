@@ -80,6 +80,11 @@ export const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
             0% { background-position: -200% 0; }
             100% { background-position: 200% 0; }
           }
+          @media (prefers-reduced-motion: reduce) {
+            .skeleton-shimmer {
+              animation: none !important;
+            }
+          }
         `}</style>
         <Box
           ref={ref}
@@ -89,6 +94,7 @@ export const Skeleton = forwardRef<HTMLDivElement, SkeletonProps>(
           bg="gray.800"
           backgroundImage="linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent)"
           backgroundSize="200% 100%"
+          className="skeleton-shimmer"
           css={{ animation: 'shimmer 1.5s ease-in-out infinite' }}
           {...rest}
         />
