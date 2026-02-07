@@ -1,10 +1,7 @@
-'use client';
-
 import { Box, Container, Heading, HStack, VStack, Text } from '@chakra-ui/react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { redirect } from 'next/navigation';
+import { auth } from '@/core/auth';
 
 interface ModeratorLayoutProps {
   children: React.ReactNode;
@@ -17,27 +14,23 @@ const modNavItems = [
   { href: '/moderator/actions', label: 'الإجراءات' },
 ];
 
-export default function ModeratorLayout({ children }: ModeratorLayoutProps) {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+export default async function ModeratorLayout({ children }: ModeratorLayoutProps) {
+  const session = await auth();
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    } else if (status === 'authenticated' && !['MODERATOR', 'ADMIN'].includes(session?.user?.role)) {
-      router.push('/');
-    }
-  }, [status, session, router]);
-
-  if (status === 'loading') {
-    return (
-      <Box minH="100vh" bg="bg.primary" display="flex" alignItems="center" justifyContent="center">
-        <Text>جاري التحميل...</Text>
-      </Box>
-    );
+  // Require authentication
+  if (!session?.user) {
+    redirect('/login');
   }
 
-  if (!session?.user || !['MODERATOR', 'ADMIN'].includes(session.user.role)) return null;
+  // Require moderator or admin role
+  if (!['MODERATOR', 'ADMIN'].includes(session.user.role)) {
+    redirect('/');
+  }
+
+  // Require not banned/suspended
+  if (session.user.status === 'BANNED' || session.user.status === 'SUSPENDED') {
+    redirect('/login?error=account_suspended');
+  }
   return (
     <Box minH="100vh" bg="bg.primary">
       {/* Header */}

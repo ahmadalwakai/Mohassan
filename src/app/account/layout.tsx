@@ -1,10 +1,7 @@
-'use client';
-
 import { Box, Container, Heading, HStack, VStack, Text } from '@chakra-ui/react';
 import Link from 'next/link';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { redirect } from 'next/navigation';
+import { auth } from '@/core/auth';
 
 interface AccountLayoutProps {
   children: React.ReactNode;
@@ -17,25 +14,18 @@ const accountNavItems = [
   { href: '/account/settings', label: 'الإعدادات' },
 ];
 
-export default function AccountLayout({ children }: AccountLayoutProps) {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+export default async function AccountLayout({ children }: AccountLayoutProps) {
+  const session = await auth();
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
-
-  if (status === 'loading') {
-    return (
-      <Box minH="100vh" bg="bg.primary" display="flex" alignItems="center" justifyContent="center">
-        <Text>جاري التحميل...</Text>
-      </Box>
-    );
+  // Require authentication
+  if (!session?.user) {
+    redirect('/login');
   }
 
-  if (!session?.user) return null;
+  // Require not banned
+  if (session.user.status === 'BANNED') {
+    redirect('/login?error=account_banned');
+  }
   return (
     <Box minH="100vh" bg="bg.primary">
       {/* Header */}
