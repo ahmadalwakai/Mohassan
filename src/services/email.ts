@@ -5,6 +5,8 @@
  * Single source of truth for all email operations
  */
 
+import { getBaseUrl } from '@/core/config/env';
+
 /**
  * Generate verification email HTML
  */
@@ -52,15 +54,16 @@ export async function sendVerificationEmail(
   token: string,
   name: string
 ): Promise<void> {
-  const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'https://www.mohassansy.com';
-  const verificationUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
+  const baseUrl = getBaseUrl();
+  const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
 
+  console.log('[EMAIL_VERIFY_URL]', verifyUrl);
   console.log('[EMAIL_SEND_START] Recipient:', email, '| Route: sendVerificationEmail | RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
 
   // Check if Resend API key is configured
   if (!process.env.RESEND_API_KEY) {
     console.log('[EMAIL_SEND_SKIP] No RESEND_API_KEY configured');
-    logVerificationFallback(email, name, verificationUrl, 'not_configured');
+    logVerificationFallback(email, name, verifyUrl, 'not_configured');
     return;
   }
 
@@ -77,13 +80,13 @@ export async function sendVerificationEmail(
       from: fromAddress,
       to: email,
       subject: 'تأكيد بريدك الإلكتروني - موحسن',
-      html: generateVerificationEmailHTML(verificationUrl, name),
+      html: generateVerificationEmailHTML(verifyUrl, name),
     });
 
     // Check for API-level errors (Resend doesn't throw for validation errors)
     if (result.error) {
       console.error('[EMAIL_SEND_FAIL] Resend API error:', result.error.message);
-      logVerificationFallback(email, name, verificationUrl, 'failed');
+      logVerificationFallback(email, name, verifyUrl, 'failed');
       return;
     }
 
@@ -91,7 +94,7 @@ export async function sendVerificationEmail(
   } catch (error) {
     console.error('[EMAIL_SEND_FAIL] Error:', error);
     console.error('[EMAIL_SEND_FAIL] Stack:', error instanceof Error ? error.stack : 'N/A');
-    logVerificationFallback(email, name, verificationUrl, 'failed');
+    logVerificationFallback(email, name, verifyUrl, 'failed');
   }
 }
 

@@ -46,8 +46,22 @@ function validateEnv() {
   }
 }
 
+// Resolve base URL in a safe, deterministic order
+export function getBaseUrl(): string {
+  const rawUrl =
+    process.env.NEXTAUTH_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    'http://localhost:3000';
+
+  return rawUrl.replace(/\/+$/, '');
+}
+
 // Run validation on module load
 validateEnv();
+
+const resolvedBaseUrl = getBaseUrl();
 
 export const env = {
   // Database
@@ -57,9 +71,7 @@ export const env = {
   // Auth
   NEXTAUTH_SECRET: getEnvVar('NEXTAUTH_SECRET'),
   // NEXTAUTH_URL is auto-set by Vercel, only needed locally
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL || process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : 'http://localhost:3000',
+  NEXTAUTH_URL: resolvedBaseUrl,
   
   // Google OAuth
   GOOGLE_CLIENT_ID: getEnvVar('GOOGLE_CLIENT_ID'),
