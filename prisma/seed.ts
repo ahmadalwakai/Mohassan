@@ -29,12 +29,13 @@ async function main() {
   // Create users
   console.log('👥 إنشاء المستخدمين...');
   const hashedPassword = await hash('password123', 12);
+  const adminPassword = await hash('Aa234311Aa@@@', 12);
 
   const admin = await prisma.user.create({
     data: {
-      name: 'مدير النظام',
-      email: 'admin@mohassan.com',
-      password: hashedPassword,
+      name: 'أحمد الوكيل',
+      email: 'ahmadalwakai76@gmail.com',
+      password: adminPassword,
       role: Role.ADMIN,
       status: UserStatus.ACTIVE,
       emailVerified: new Date(),
