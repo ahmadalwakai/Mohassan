@@ -1,6 +1,7 @@
 'use client';
 
 import { Box, Heading, Text, VStack, HStack, Button, Badge, Spinner, Center } from '@chakra-ui/react';
+import Link from 'next/link';
 import { useEffect, useState, useCallback } from 'react';
 
 interface Notification {
@@ -161,14 +162,14 @@ export default function NotificationsPage() {
                     </Button>
                   )}
                   {notification.link && (
-                    <Button
-                      size="xs"
-                      colorScheme="brand"
-                      as="a"
-                      href={notification.link}
-                    >
-                      فتح
-                    </Button>
+                    <Link href={notification.link}>
+                      <Button
+                        size="xs"
+                        colorScheme="brand"
+                      >
+                        فتح
+                      </Button>
+                    </Link>
                   )}
                   <Button
                     size="xs"
