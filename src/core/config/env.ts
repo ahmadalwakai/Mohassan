@@ -46,8 +46,17 @@ function validateEnv() {
   }
 }
 
+// Production domain - MUST be set correctly for email links
+const PRODUCTION_URL = 'https://www.mohassansy.com';
+
 // Resolve base URL in a safe, deterministic order
 export function getBaseUrl(): string {
+  // In production on Vercel, always use the production domain
+  // This prevents email links from using vercel.app URLs
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL) {
+    return PRODUCTION_URL;
+  }
+  
   const rawUrl =
     process.env.NEXTAUTH_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
