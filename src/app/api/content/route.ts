@@ -149,6 +149,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(content, { status: 201 });
   } catch (error) {
     console.error('Content creation error:', error);
+    // Surface safety-policy BLOCK as 400
+    const msg = error instanceof Error ? error.message : '';
+    if (msg.includes('محظورة') || msg.includes('محتوى') || msg.includes('كلمات')) {
+      return NextResponse.json({ error: msg }, { status: 400 });
+    }
     return NextResponse.json(
       { error: 'حدث خطأ أثناء إنشاء المحتوى' },
       { status: 500 }

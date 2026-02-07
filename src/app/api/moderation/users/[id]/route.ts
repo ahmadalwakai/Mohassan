@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/core/auth';
+import { guardAdmin, handleApiError } from '@/core/auth/api-guard';
 import { moderationService } from '@/core/services';
 import { z } from 'zod';
 
@@ -22,28 +22,12 @@ export async function POST(
   { params }: { params: RouteParams }
 ) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin
-    const userRole = (session.user as { role?: string }).role as 'USER' | 'MODERATOR' | 'ADMIN' | undefined;
-    if (userRole !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'إدارة المستخدمين متاحة للمدراء فقط' },
-        { status: 403 }
-      );
-    }
+    const admin = await guardAdmin();
 
     const { id } = await params;
     
     // Can't moderate yourself
-    if (id === session.user.id) {
+    if (id === admin.id) {
       return NextResponse.json(
         { error: 'لا يمكنك تنفيذ إجراءات على حسابك' },
         { status: 400 }
@@ -65,15 +49,15 @@ export async function POST(
     let result;
     switch (action) {
       case 'warn':
-        result = await moderationService.warnUser(id, session.user.id, userRole, reason);
+        result = await moderationService.warnUser(id, admin.id, admin.role, reason);
         break;
       
       case 'ban':
-        result = await moderationService.banUser(id, session.user.id, userRole, reason, durationDays);
+        result = await moderationService.banUser(id, admin.id, admin.role, reason, durationDays);
         break;
       
       case 'unban':
-        result = await moderationService.unbanUser(id, session.user.id, userRole, reason);
+        result = await moderationService.unbanUser(id, admin.id, admin.role, reason);
         break;
 
       default:
@@ -98,18 +82,6 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error('[USER_MODERATION]', error);
-    
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'فشل في تنفيذ الإجراء' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

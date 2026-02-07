@@ -13,22 +13,37 @@ export type AuditAction =
   | 'USER_BANNED'
   | 'USER_UNBANNED'
   | 'USER_ROLE_CHANGED'
+  | 'USER_BULK_ACTION'
+  | 'USER_WARNING_ADDED'
+  | 'USER_WARNINGS_CLEARED'
+  | 'USER_NOTE_ADDED'
   | 'CONTENT_CREATED'
   | 'CONTENT_UPDATED'
   | 'CONTENT_DELETED'
   | 'CONTENT_HIDDEN'
   | 'CONTENT_UNHIDDEN'
   | 'CONTENT_WARNED'
+  | 'CONTENT_APPROVED'
+  | 'CONTENT_REJECTED'
+  | 'CONTENT_FEATURED'
+  | 'CONTENT_BULK_ACTION'
+  | 'CONTENT_OVERRIDE'
   | 'REPORT_CREATED'
   | 'REPORT_RESOLVED'
   | 'SETTINGS_UPDATED'
-  | 'AI_PROMPT_UPDATED';
+  | 'AI_PROMPT_UPDATED'
+  | 'SAFETY_POLICY_UPDATED'
+  | 'SAFETY_POLICY_RESTORED'
+  | 'SAFETY_KEYWORDS_RESTORED'
+  | 'BANNED_KEYWORD_ADDED'
+  | 'BANNED_KEYWORD_REMOVED'
+  | 'USER_BULK_PREVIEW';
 
 export interface AuditLogEntry {
   action: AuditAction;
   actorId: string;
   actorRole: Role;
-  targetType: 'USER' | 'CONTENT' | 'REPORT' | 'SETTINGS' | 'AI';
+  targetType: 'USER' | 'CONTENT' | 'REPORT' | 'SETTINGS' | 'AI' | 'SAFETY';
   targetId: string;
   metadata?: Record<string, unknown>;
   ip?: string;

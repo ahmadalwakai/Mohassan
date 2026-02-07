@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/core/auth/guards';
+import { guardAdmin, handleApiError } from '@/core/auth/api-guard';
 import { prisma } from '@/core/db/prisma';
 import { writeAuditLog } from '@/core/logging/audit';
 import { RoleEnum } from '@/lib/validators/enums';
@@ -15,11 +15,7 @@ type Params = Promise<{ id: string }>;
 export async function POST(request: NextRequest, props: { params: Params }) {
   try {
     const { id } = await props.params;
-    const session = await getSession();
-
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+    const admin = await guardAdmin();
 
     const { role } = await request.json();
     
@@ -49,8 +45,8 @@ export async function POST(request: NextRequest, props: { params: Params }) {
     // Log action
     await writeAuditLog({
       action: 'USER_ROLE_CHANGED',
-      actorId: session.user.id,
-      actorRole: session.user.role as 'USER' | 'MODERATOR' | 'ADMIN',
+      actorId: admin.id,
+      actorRole: admin.role,
       targetType: 'USER',
       targetId: id,
       metadata: { oldRole: existingUser.role, newRole: role },
@@ -67,7 +63,6 @@ export async function POST(request: NextRequest, props: { params: Params }) {
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    console.error('POST /api/admin/users/[id]/role error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return handleApiError(error);
   }
 }

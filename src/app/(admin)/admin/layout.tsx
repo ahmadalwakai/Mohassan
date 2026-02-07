@@ -2,18 +2,11 @@ import { Box, Container, Heading, HStack, VStack, Text } from '@chakra-ui/react'
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/core/auth';
+import { adminDepartments } from '@/modules/admin-ops';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
-
-const adminNavItems = [
-  { href: '/admin', label: 'لوحة التحكم' },
-  { href: '/admin/users', label: 'المستخدمين' },
-  { href: '/admin/settings', label: 'الإعدادات' },
-  { href: '/admin/audit', label: 'سجل المراجعة' },
-  { href: '/admin/ai-center', label: 'مركز الذكاء الاصطناعي' },
-];
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
   const session = await auth();
@@ -50,7 +43,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
 
       <Container maxW="container.xl" py={8}>
         <HStack align="start" gap={8}>
-          {/* Sidebar */}
+          {/* Sidebar — driven by department registry */}
           <Box
             w="250px"
             bg="bg.secondary"
@@ -61,9 +54,9 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             position="sticky"
             top={8}
           >
-            <VStack align="stretch" gap={2}>
-              {adminNavItems.map((item) => (
-                <Link key={item.href} href={item.href}>
+            <VStack align="stretch" gap={1}>
+              {adminDepartments.map((dept) => (
+                <Link key={dept.id} href={dept.route}>
                   <Box
                     py={3}
                     px={4}
@@ -71,8 +64,12 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
                     color="text.primary"
                     _hover={{ bg: 'bg.elevated', color: 'status.error' }}
                     transition="all 0.2s"
+                    title={dept.description}
                   >
-                    {item.label}
+                    <HStack gap={2}>
+                      <Text fontSize="lg">{dept.iconName}</Text>
+                      <Text fontSize="sm">{dept.label}</Text>
+                    </HStack>
                   </Box>
                 </Link>
               ))}

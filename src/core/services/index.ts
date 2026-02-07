@@ -16,6 +16,9 @@ export type { CreateReportInput, ReportFilters } from './report.service';
 export { moderationService } from './moderation.service';
 export type { ModerationStats, ContentModerationFilters } from './moderation.service';
 
+export { safetyService } from './safety.service';
+export type { SafetyVerdict, SafetyCheckResult, SimulationResult, AutoHideRule } from './safety.service';
+
 export {
   getAdminDashboardData,
   getModeratorDashboardData,

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/core/auth';
+import { guardAdmin, handleApiError } from '@/core/auth/api-guard';
 import { moderationService } from '@/core/services';
 import { z } from 'zod';
 
@@ -17,23 +17,7 @@ const bulkModerationSchema = z.object({
 // POST - Bulk moderate content
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin only for bulk actions
-    const userRole = (session.user as { role?: string }).role as 'USER' | 'MODERATOR' | 'ADMIN' | undefined;
-    if (userRole !== 'ADMIN') {
-      return NextResponse.json(
-        { error: 'العمليات الجماعية متاحة للمدراء فقط' },
-        { status: 403 }
-      );
-    }
+    const admin = await guardAdmin();
 
     const body = await request.json();
     const validation = bulkModerationSchema.safeParse(body);
@@ -49,7 +33,7 @@ export async function POST(request: NextRequest) {
     let result;
 
     if (action === 'approve') {
-      result = await moderationService.bulkApprove(contentIds, session.user.id, userRole);
+      result = await moderationService.bulkApprove(contentIds, admin.id, admin.role);
     } else {
       if (!reason) {
         return NextResponse.json(
@@ -57,7 +41,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      result = await moderationService.bulkReject(contentIds, session.user.id, userRole, reason);
+      result = await moderationService.bulkReject(contentIds, admin.id, admin.role, reason);
     }
 
     return NextResponse.json({
@@ -66,10 +50,6 @@ export async function POST(request: NextRequest) {
       result,
     });
   } catch (error) {
-    console.error('[BULK_MODERATION]', error);
-    return NextResponse.json(
-      { error: 'فشل في تنفيذ العمليات الجماعية' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

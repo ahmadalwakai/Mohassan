@@ -4,13 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireModerator } from '@/core/auth/guards';
+import { guardModerator, handleApiError } from '@/core/auth/api-guard';
 import { prisma } from '@/core/db/prisma';
 import { parseReportStatusOrDefault, type ReportStatus } from '@/lib/validators/enums';
 
 export async function GET(request: NextRequest) {
   try {
-    await requireModerator();
+    await guardModerator();
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -38,7 +38,6 @@ export async function GET(request: NextRequest) {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('GET /api/moderator/reports error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, AuthError } from '@/core/auth/guards';
+import { guardAdmin, handleApiError } from '@/core/auth/api-guard';
 import { prisma } from '@/core/db/prisma';
 import { writeAuditLog } from '@/core/logging/audit';
 import { z } from 'zod';
@@ -75,7 +75,7 @@ const updateSettingsSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Require admin role
-    const session = await requireAdmin();
+    const session = await guardAdmin();
 
     // Get AI settings from SystemSetting
     let settingsRecord = await prisma.systemSetting.findUnique({
@@ -149,19 +149,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('GET /api/admin/ai-center error:', error);
-
-    if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.code === 'UNAUTHENTICATED' ? 401 : 403 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 
@@ -171,7 +159,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Require admin role
-    const session = await requireAdmin();
+    const session = await guardAdmin();
 
     const body = await request.json();
 
@@ -280,18 +268,6 @@ export async function POST(request: NextRequest) {
       message: 'تم تحديث إعدادات الذكاء الاصطناعي بنجاح',
     });
   } catch (error) {
-    console.error('POST /api/admin/ai-center error:', error);
-
-    if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.code === 'UNAUTHENTICATED' ? 401 : 403 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Internal Server Error' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

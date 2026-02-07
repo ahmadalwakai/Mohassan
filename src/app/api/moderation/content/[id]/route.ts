@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/core/auth';
+import { guardModerator, handleApiError } from '@/core/auth/api-guard';
 import { moderationService } from '@/core/services';
 import { z } from 'zod';
 
@@ -22,23 +22,7 @@ export async function POST(
   { params }: { params: RouteParams }
 ) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is moderator or admin
-    const userRole = (session.user as { role?: string }).role as 'USER' | 'MODERATOR' | 'ADMIN' | undefined;
-    if (!userRole || !['ADMIN', 'MODERATOR'].includes(userRole)) {
-      return NextResponse.json(
-        { error: 'غير مصرح' },
-        { status: 403 }
-      );
-    }
+    const moderator = await guardModerator();
 
     const { id } = await params;
     const body = await request.json();
@@ -58,8 +42,8 @@ export async function POST(
       case 'approve':
         result = await moderationService.approveContent(
           id, 
-          session.user.id,
-          userRole,
+          moderator.id,
+          moderator.role,
           skipAI ?? false
         );
         break;
@@ -71,7 +55,7 @@ export async function POST(
             { status: 400 }
           );
         }
-        result = await moderationService.rejectContent(id, session.user.id, userRole, reason);
+        result = await moderationService.rejectContent(id, moderator.id, moderator.role, reason);
         break;
       
       case 'takedown':
@@ -81,7 +65,7 @@ export async function POST(
             { status: 400 }
           );
         }
-        result = await moderationService.takedownContent(id, session.user.id, userRole, reason);
+        result = await moderationService.takedownContent(id, moderator.id, moderator.role, reason);
         break;
     }
 
@@ -95,18 +79,6 @@ export async function POST(
       result,
     });
   } catch (error) {
-    console.error('[CONTENT_MODERATION]', error);
-    
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'فشل في تنفيذ الإجراء' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

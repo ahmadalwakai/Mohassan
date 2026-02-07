@@ -5,6 +5,7 @@
 
 import { prisma } from '@/core/db/prisma';
 import { ReportStatus, ReportReason, Prisma } from '@prisma/client';
+import { safetyService } from './safety.service';
 
 export interface CreateReportInput {
   contentId: string;
@@ -67,6 +68,9 @@ export const reportService = {
         },
       },
     });
+
+    // Auto-hide content if report threshold is reached
+    await safetyService.autoHideOnReportThreshold(input.contentId, input.reason);
 
     return report;
   },

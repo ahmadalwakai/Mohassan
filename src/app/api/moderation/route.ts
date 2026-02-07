@@ -4,14 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireModerator, AuthError } from '@/core/auth/guards';
+import { guardModerator, handleApiError } from '@/core/auth/api-guard';
 import { moderationService } from '@/core/services';
 
 // GET - Get moderation dashboard stats and pending items
 export async function GET(request: NextRequest) {
   try {
     // Require moderator or admin role
-    await requireModerator();
+    await guardModerator();
 
     const { searchParams } = new URL(request.url);
     const view = searchParams.get('view') || 'stats';
@@ -41,18 +41,6 @@ export async function GET(request: NextRequest) {
         );
     }
   } catch (error) {
-    console.error('[MODERATION_GET]', error);
-    
-    if (error instanceof AuthError) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: error.code === 'UNAUTHENTICATED' ? 401 : 403 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'فشل في جلب بيانات الإدارة' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }

@@ -4,15 +4,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/core/auth/guards';
+import { guardAdmin, handleApiError } from '@/core/auth/api-guard';
 import { prisma } from '@/core/db/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+    await guardAdmin();
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -55,7 +52,6 @@ export async function GET(request: NextRequest) {
       pagination: { page, limit, total, pages: Math.ceil(total / limit) },
     });
   } catch (error) {
-    console.error('GET /api/admin/audit error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return handleApiError(error);
   }
 }

@@ -4,21 +4,24 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, AuthError } from '@/core/auth/guards';
+import { guardAdmin, handleApiError } from '@/core/auth/api-guard';
 import { prisma } from '@/core/db/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    // Require admin role
-    await requireAdmin();
+    await guardAdmin();
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const search = searchParams.get('search') || '';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
+    const pageSize = Math.max(1, Math.min(100, parseInt(
+      searchParams.get('pageSize') || searchParams.get('limit') || '20'
+    )));
+    // Accept both `q` (from admin UI) and `search` (legacy)
+    const search = searchParams.get('q') || searchParams.get('search') || '';
     const roleFilter = searchParams.get('role');
+    const statusFilter = searchParams.get('status');
 
-    const skip = (page - 1) * limit;
+    const skip = (page - 1) * pageSize;
 
     // Build where clause
     const whereClause: Record<string, unknown> = {};
@@ -38,6 +41,11 @@ export async function GET(request: NextRequest) {
       whereClause.role = roleFilter;
     }
 
+    // Status filter
+    if (statusFilter && ['ACTIVE', 'SUSPENDED', 'BANNED'].includes(statusFilter)) {
+      whereClause.status = statusFilter;
+    }
+
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where: whereClause,
@@ -46,12 +54,15 @@ export async function GET(request: NextRequest) {
           email: true,
           name: true,
           role: true,
+          status: true,
           emailVerified: true,
           bannedAt: true,
+          banExpiry: true,
+          warningsCount: true,
           createdAt: true,
         },
         skip,
-        take: limit,
+        take: pageSize,
         orderBy: { createdAt: 'desc' },
       }),
       prisma.user.count({ where: whereClause }),
@@ -59,15 +70,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       users,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      pagination: {
+        page,
+        pageSize,
+        total,
+        totalPages: Math.ceil(total / pageSize),
+      },
     });
   } catch (error) {
-    console.error('GET /api/admin/users error:', error);
-    
-    if (error instanceof AuthError) {
-      return NextResponse.json({ error: error.message }, { status: error.code === 'UNAUTHENTICATED' ? 401 : 403 });
-    }
-
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return handleApiError(error);
   }
 }

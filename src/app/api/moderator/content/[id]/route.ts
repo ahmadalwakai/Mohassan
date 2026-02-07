@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireModerator } from '@/core/auth/guards';
+import { guardModerator, handleApiError } from '@/core/auth/api-guard';
 import { prisma } from '@/core/db/prisma';
 import { writeAuditLog } from '@/core/logging/audit';
 import { ContentStatusEnum } from '@/lib/validators/enums';
@@ -20,7 +20,7 @@ const statusMap: Record<string, string> = {
 export async function POST(request: NextRequest, props: { params: Params }) {
   try {
     const { id } = await props.params;
-    const moderator = await requireModerator();
+    const moderator = await guardModerator();
 
     const { action, reason } = await request.json();
     if (!['APPROVE', 'REJECT', 'HIDE'].includes(action)) {
@@ -121,7 +121,6 @@ export async function POST(request: NextRequest, props: { params: Params }) {
 
     return NextResponse.json(updatedContent);
   } catch (error) {
-    console.error('POST /api/moderator/content/[id] error:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    return handleApiError(error);
   }
 }

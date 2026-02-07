@@ -5,6 +5,8 @@
 
 import { prisma } from '@/core/db/prisma';
 import { ContentStatus, Prisma } from '@prisma/client';
+import { safetyService } from './safety.service';
+import { writeAuditLog } from '@/core/logging/audit';
 
 // Content types supported by the platform
 export type ContentType = 'news' | 'directory' | 'market' | 'community' | 'initiative';
@@ -103,6 +105,29 @@ export const contentService = {
         )
       : [];
 
+    // ── Safety policy check ──────────────────────────────────────
+    const safetyResult = await safetyService.checkContent(data.title, data.body);
+
+    if (safetyResult.verdict === 'BLOCK') {
+      throw new Error(safetyResult.reason || 'يحتوي المحتوى على كلمات محظورة');
+    }
+
+    // Determine initial status based on safety verdict
+    let initialStatus: ContentStatus = ContentStatus.PENDING;
+    let flagMetadata: Record<string, unknown> = {};
+
+    if (safetyResult.verdict === 'HIDE') {
+      initialStatus = ContentStatus.HIDDEN;
+      flagMetadata = { autoHidden: true, safetyMatches: safetyResult.matches };
+    } else if (safetyResult.verdict === 'FLAG') {
+      flagMetadata = { isFlagged: true, safetyMatches: safetyResult.matches };
+    }
+
+    const mergedMetadata = {
+      ...(data.metadata ? JSON.parse(JSON.stringify(data.metadata)) : {}),
+      ...flagMetadata,
+    };
+
     const content = await prisma.content.create({
       data: {
         type: data.type,
@@ -110,10 +135,10 @@ export const contentService = {
         body: data.body,
         excerpt: data.excerpt || data.body.substring(0, 200),
         image: data.featuredImage,
-        metadata: data.metadata ? JSON.parse(JSON.stringify(data.metadata)) : undefined,
+        metadata: Object.keys(mergedMetadata).length > 0 ? mergedMetadata : undefined,
         authorId: data.authorId,
         slug,
-        status: ContentStatus.PENDING, // Requires moderation
+        status: initialStatus,
         tags: tagConnections.length
           ? { 
               create: tagConnections.map((t) => ({ 
@@ -132,6 +157,23 @@ export const contentService = {
       },
     });
 
+    // Audit log for auto-actions
+    if (safetyResult.verdict !== 'PASS') {
+      await writeAuditLog({
+        action: safetyResult.verdict === 'HIDE' ? 'CONTENT_HIDDEN' : 'CONTENT_UPDATED',
+        actorId: 'SYSTEM',
+        actorRole: 'ADMIN',
+        targetType: 'CONTENT',
+        targetId: content.id,
+        metadata: {
+          autoAction: true,
+          trigger: 'banned_keyword',
+          verdict: safetyResult.verdict,
+          matches: safetyResult.matches,
+        },
+      });
+    }
+
     return content;
   },
 
@@ -144,7 +186,7 @@ export const contentService = {
     // Get current content
     const current = await prisma.content.findUnique({
       where: { id },
-      select: { authorId: true, status: true },
+      select: { authorId: true, status: true, metadata: true },
     });
 
     if (!current) {
@@ -173,11 +215,62 @@ export const contentService = {
         : [];
     }
 
+    // ── Safety policy check on title/body changes ──────────────
+    if (!isAdmin && (data.title || data.body)) {
+      const textToCheck = {
+        title: data.title || '',
+        body: data.body || '',
+      };
+      const safetyResult = await safetyService.checkContent(textToCheck.title, textToCheck.body);
+
+      if (safetyResult.verdict === 'BLOCK') {
+        throw new Error(safetyResult.reason || 'يحتوي المحتوى على كلمات محظورة');
+      }
+
+      if (safetyResult.verdict === 'HIDE' || safetyResult.verdict === 'FLAG') {
+        const oldMeta = (current.metadata as Record<string, unknown>) || {};
+        data.metadata = {
+          ...oldMeta,
+          ...(data.metadata || {}),
+          ...(safetyResult.verdict === 'HIDE'
+            ? { autoHidden: true, safetyMatches: safetyResult.matches }
+            : { isFlagged: true, safetyMatches: safetyResult.matches }),
+        };
+
+        // Audit
+        await writeAuditLog({
+          action: safetyResult.verdict === 'HIDE' ? 'CONTENT_HIDDEN' : 'CONTENT_UPDATED',
+          actorId: 'SYSTEM',
+          actorRole: 'ADMIN',
+          targetType: 'CONTENT',
+          targetId: id,
+          metadata: {
+            autoAction: true,
+            trigger: 'banned_keyword_on_update',
+            verdict: safetyResult.verdict,
+            matches: safetyResult.matches,
+          },
+        });
+      }
+    }
+
     // If content is edited after being published, set back to pending for review
-    const newStatus = 
-      !isAdmin && current.status === ContentStatus.PUBLISHED && Object.keys(data).length > 0
+    let newStatus: ContentStatus;
+    // Safety HIDE verdict overrides everything
+    if (!isAdmin && (data.title || data.body)) {
+      const recheckResult = await safetyService.checkContent(data.title || '', data.body || '');
+      if (recheckResult.verdict === 'HIDE') {
+        newStatus = ContentStatus.HIDDEN;
+      } else if (!isAdmin && current.status === ContentStatus.PUBLISHED && Object.keys(data).length > 0) {
+        newStatus = ContentStatus.PENDING;
+      } else {
+        newStatus = (data.status || current.status) as ContentStatus;
+      }
+    } else {
+      newStatus = !isAdmin && current.status === ContentStatus.PUBLISHED && Object.keys(data).length > 0
         ? ContentStatus.PENDING
-        : data.status || current.status;
+        : (data.status || current.status) as ContentStatus;
+    }
 
     // First, delete existing tags if updating
     if (tagConnections !== undefined) {

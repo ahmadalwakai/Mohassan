@@ -129,6 +129,10 @@ model User {
   // AI events
   aiEvents          AIEventLog[]
 
+  // Admin notes
+  adminNotesReceived AdminNote[] @relation("AdminNotesReceived")
+  adminNotesCreated  AdminNote[] @relation("AdminNotesCreated")
+
   @@map("users")
 }
 
@@ -198,6 +202,12 @@ model Content {
   moderatedAt     DateTime?
   moderatedBy     String?
   rejectionReason String?    @db.Text
+  
+  // Safety moderation metadata
+  hiddenReason       String?  @db.Text
+  matchedKeywords    Json?    // [{ keyword, severity }]
+  moderationTrigger  String?  // 'KEYWORDS' | 'REPORTS' | 'MANUAL' | 'AI'
+  moderationMeta     Json?    // { triggeredAt, overrideReason, overrideActorId, overrideAt, ... }
   
   // Stats
   viewCount       Int        @default(0)
@@ -425,4 +435,83 @@ model SystemSetting {
   updatedAt DateTime @updatedAt
 
   @@map("system_settings")
+}
+
+// ==================== ADMIN NOTES MODEL ====================
+
+model AdminNote {
+  id        String   @id @default(cuid())
+  note      String   @db.Text
+  
+  userId    String
+  user      User     @relation("AdminNotesReceived", fields: [userId], references: [id], onDelete: Cascade)
+  
+  actorId   String
+  actor     User     @relation("AdminNotesCreated", fields: [actorId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([actorId])
+  @@map("admin_notes")
+}
+
+// ==================== SAFETY POLICIES ====================
+
+model SafetyPolicy {
+  id                    String   @id @default(cuid())
+  
+  // Thresholds
+  maxWarningsBeforeBan  Int      @default(3)
+  autoHideFlagsCount    Int      @default(5)
+  autoHideConfidence    Float    @default(0.8)
+  maxReportsPerUser     Int      @default(10)
+  
+  // Feature flags
+  enableAutoModeration  Boolean  @default(false)
+  enableAIModeration    Boolean  @default(false)
+  enableUserReporting   Boolean  @default(true)
+  requireEmailVerify    Boolean  @default(true)
+  
+  // Limits
+  newUserCooldownHours  Int      @default(0)
+  maxContentPerDay      Int      @default(50)
+  
+  // Per content-type + per report-category auto-hide rules (structured JSON)
+  autoHideRules         Json?    // { rules: [{ contentType, reportCategory, threshold, action }] }
+  
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("safety_policies")
+}
+
+model SafetyPolicyVersion {
+  id        String   @id @default(cuid())
+  
+  snapshot  Json     // Full snapshot: { policy: {...}, keywords: [...] }
+  actorId   String
+  note      String?  @db.Text
+  
+  createdAt DateTime @default(now())
+
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("safety_policy_versions")
+}
+
+model BannedKeyword {
+  id        String   @id @default(cuid())
+  keyword   String   @unique
+  reason    String?
+  isActive  Boolean  @default(true)
+  severity  String   @default("medium") // low, medium, high
+  
+  createdBy String?
+  
+  createdAt DateTime @default(now())
+
+  @@index([keyword])
+  @@index([isActive])
+  @@map("banned_keywords")
 }
