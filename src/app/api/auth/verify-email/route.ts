@@ -1,5 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/core/db/prisma';
+import { getBaseUrl } from '@/core/config/env';
+
+/**
+ * Helper to create redirect URL using configured base URL
+ * This ensures redirects go to the correct domain (not Vercel preview URLs)
+ */
+function createRedirectUrl(path: string): string {
+  const baseUrl = getBaseUrl();
+  return `${baseUrl}${path}`;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,7 +17,7 @@ export async function GET(request: NextRequest) {
     const token = searchParams.get('token');
 
     if (!token) {
-      return NextResponse.redirect(new URL('/verify-email?error=missing_token', request.url));
+      return NextResponse.redirect(createRedirectUrl('/verify-email?error=missing_token'));
     }
 
     // Find the verification token
@@ -16,7 +26,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (!verificationToken) {
-      return NextResponse.redirect(new URL('/verify-email?error=invalid_token', request.url));
+      return NextResponse.redirect(createRedirectUrl('/verify-email?error=invalid_token'));
     }
 
     // Check if token is expired
@@ -30,7 +40,7 @@ export async function GET(request: NextRequest) {
           }
         },
       });
-      return NextResponse.redirect(new URL('/verify-email?error=expired_token', request.url));
+      return NextResponse.redirect(createRedirectUrl('/verify-email?error=expired_token'));
     }
 
     // Update user's email verification status
@@ -50,9 +60,9 @@ export async function GET(request: NextRequest) {
     });
 
     // Redirect to success page
-    return NextResponse.redirect(new URL('/email-verified', request.url));
+    return NextResponse.redirect(createRedirectUrl('/email-verified'));
   } catch (error) {
     console.error('Email verification error:', error);
-    return NextResponse.redirect(new URL('/verify-email?error=server_error', request.url));
+    return NextResponse.redirect(createRedirectUrl('/verify-email?error=server_error'));
   }
 }
