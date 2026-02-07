@@ -1,80 +1,125 @@
 'use client';
 
-import { Box, Heading, Input, VStack, Button } from '@chakra-ui/react';
+import { Box, Heading, Input, VStack, HStack, Button, Badge } from '@chakra-ui/react';
+import { Select } from '@/components/ui/select';
 import { useState, useCallback, useEffect } from 'react';
 import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } from '@/components/ui/table';
-import { Select } from '@/components/ui/select';
 
 interface User {
   id: string;
   email: string;
   name: string | null;
-  role: string;
-  bannedAt: Date | null;
+  role: 'USER' | 'MODERATOR' | 'ADMIN';
+  status: 'ACTIVE' | 'SUSPENDED' | 'BANNED';
   emailVerified: Date | null;
+  bannedAt: Date | null;
+  banExpiry: Date | null;
+  warningsCount: number;
+  createdAt: string;
+}
+
+interface PaginationData {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
 }
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
+  const [pagination, setPagination] = useState<PaginationData>({
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    totalPages: 0,
+  });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  // Simple notification
-  const notify = (message: string, type: string) => console.log(`[${type}] ${message}`);
+  const [roleFilter, setRoleFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const showMessage = (text: string, type: 'success' | 'error') => {
+    setMessage({ text, type });
+    setTimeout(() => setMessage(null), 3000);
+  };
 
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/admin/users?search=${search}&page=${page}`);
+      const params = new URLSearchParams();
+      params.set('page', String(pagination.page));
+      params.set('pageSize', String(pagination.pageSize));
+      if (search) params.set('q', search);
+      if (roleFilter) params.set('role', roleFilter);
+      if (statusFilter) params.set('status', statusFilter);
+
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data.users);
+        setPagination(data.pagination);
+      } else {
+        showMessage('فشل تحميل المستخدمين', 'error');
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
-      notify('فشل تحميل المستخدمين', 'error');
+      showMessage('خطأ في تحميل المستخدمين', 'error');
     } finally {
       setLoading(false);
     }
-  }, [search, page]);
+  }, [pagination.page, pagination.pageSize, search, roleFilter, statusFilter]);
 
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  async function changeRole(userId: string, newRole: string) {
+  async function updateUser(userId: string, updates: any) {
     try {
-      const res = await fetch(`/api/admin/users/${userId}/role`, {
-        method: 'POST',
+      setUpdatingId(userId);
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
+        body: JSON.stringify(updates),
       });
+
       if (res.ok) {
-        notify('تم تحديث الدور', 'success');
+        showMessage('تم تحديث المستخدم بنجاح', 'success');
         fetchUsers();
+      } else {
+        const error = await res.json();
+        showMessage(error.error || 'فشل تحديث المستخدم', 'error');
       }
     } catch (error) {
-      console.error('Failed to change role:', error);
-      notify('فشل تحديث الدور', 'error');
+      console.error('Failed to update user:', error);
+      showMessage('خطأ في تحديث المستخدم', 'error');
+    } finally {
+      setUpdatingId(null);
     }
   }
 
-  async function toggleBan(userId: string, banned: boolean) {
-    try {
-      const res = await fetch(`/api/admin/users/${userId}/ban`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ banned: !banned }),
-      });
-      if (res.ok) {
-        notify(!banned ? 'تم حظر المستخدم' : 'تم رفع الحظر', 'success');
-        fetchUsers();
-      }
-    } catch (error) {
-      console.error('Failed to toggle ban:', error);
-      notify('فشل تنفيذ العملية', 'error');
+  const getRoleBadgeColor = (role: string) => {
+    switch (role) {
+      case 'ADMIN':
+        return 'red';
+      case 'MODERATOR':
+        return 'yellow';
+      default:
+        return 'blue';
     }
-  }
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'BANNED':
+        return 'red';
+      case 'SUSPENDED':
+        return 'orange';
+      default:
+        return 'green';
+    }
+  };
 
   return (
     <VStack gap={6} align="stretch">
@@ -83,65 +128,153 @@ export default function AdminUsersPage() {
           إدارة المستخدمين
         </Heading>
 
-        <Input
-          placeholder="البحث عن مستخدم..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-          mb={4}
-          color="text.primary"
-        />
+        {message && (
+          <Box
+            mb={4}
+            p={3}
+            borderRadius="md"
+            bg={message.type === 'success' ? 'green.100' : 'red.100'}
+            color={message.type === 'success' ? 'green.800' : 'red.800'}
+          >
+            {message.text}
+          </Box>
+        )}
+
+        <VStack gap={4} align="stretch" mb={6}>
+          <HStack gap={4}>
+            <Input
+              placeholder="البحث عن الاسم أو البريد..."
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPagination(p => ({ ...p, page: 1 }));
+              }}
+              flex={1}
+              color="text.primary"
+            />
+            <Select
+              value={roleFilter}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                setRoleFilter(e.target.value);
+                setPagination(p => ({ ...p, page: 1 }));
+              }}
+              options={[
+                { value: '', label: 'الدور' },
+                { value: 'USER', label: 'مستخدم' },
+                { value: 'MODERATOR', label: 'مشرف' },
+                { value: 'ADMIN', label: 'مسؤول' },
+              ]}
+              style={{ width: '120px' }}
+            />
+            <Select
+              value={statusFilter}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                setStatusFilter(e.target.value);
+                setPagination(p => ({ ...p, page: 1 }));
+              }}
+              options={[
+                { value: '', label: 'الحالة' },
+                { value: 'ACTIVE', label: 'نشط' },
+                { value: 'SUSPENDED', label: 'موقوف' },
+                { value: 'BANNED', label: 'محظور' },
+              ]}
+              style={{ width: '120px' }}
+            />
+          </HStack>
+        </VStack>
 
         {loading ? (
-          <div>جاري التحميل...</div>
+          <Box textAlign="center" color="text.secondary" py={8}>
+            جاري التحميل...</Box>
         ) : users.length === 0 ? (
-          <div>لا توجد نتائج</div>
+          <Box textAlign="center" color="text.secondary" py={8}>
+            لا توجد نتائج</Box>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeadCell align="right">البريد</TableHeadCell>
-                <TableHeadCell align="right">الاسم</TableHeadCell>
-                <TableHeadCell align="right">الدور</TableHeadCell>
-                <TableHeadCell align="right">الحالة</TableHeadCell>
-                <TableHeadCell align="right">الإجراءات</TableHeadCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell align="right">{user.email}</TableCell>
-                  <TableCell align="right">{user.name}</TableCell>
-                  <TableCell align="right">
-                    <Select
-                      value={user.role}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => changeRole(user.id, e.target.value)}
-                      options={[
-                        { value: 'USER', label: 'USER' },
-                        { value: 'MODERATOR', label: 'MODERATOR' },
-                        { value: 'ADMIN', label: 'ADMIN' },
-                      ]}
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    {user.bannedAt ? 'محظور' : user.emailVerified ? 'نشط' : 'قيد الانتظار'}
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      colorScheme={user.bannedAt ? 'green' : 'red'}
-                      onClick={() => toggleBan(user.id, !!user.bannedAt)}
-                    >
-                      {user.bannedAt ? 'رفع الحظر' : 'حظر'}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <>
+            <div style={{ overflowX: 'auto' }}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHeadCell align="right">البريد</TableHeadCell>
+                    <TableHeadCell align="right">الاسم</TableHeadCell>
+                    <TableHeadCell align="right">الدور</TableHeadCell>
+                    <TableHeadCell align="right">الحالة</TableHeadCell>
+                    <TableHeadCell align="right">تم التحقق</TableHeadCell>
+                    <TableHeadCell align="right">الإجراءات</TableHeadCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell align="right">{user.email}</TableCell>
+                      <TableCell align="right">{user.name || '-'}</TableCell>
+                      <TableCell align="right">
+                        <Badge colorScheme={getRoleBadgeColor(user.role)}>
+                          {user.role === 'USER' ? 'مستخدم' : user.role === 'MODERATOR' ? 'مشرف' : 'مسؤول'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell align="right">
+                        <Badge colorScheme={getStatusBadgeColor(user.status)}>
+                          {user.status === 'ACTIVE' ? 'نشط' : user.status === 'SUSPENDED' ? 'موقوف' : 'محظور'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell align="right">
+                        {user.emailVerified ? '✓' : '✗'}
+                      </TableCell>
+                      <TableCell align="right">
+                        <VStack gap={2} align="flex-start">
+                          <Select
+                            value={user.role}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateUser(user.id, { role: e.target.value })}
+                            disabled={updatingId === user.id}
+                            options={[
+                              { value: 'USER', label: 'مستخدم' },
+                              { value: 'MODERATOR', label: 'مشرف' },
+                              { value: 'ADMIN', label: 'مسؤول' },
+                            ]}
+                            style={{ width: '100px' }}
+                          />
+                          <Select
+                            value={user.status}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateUser(user.id, { status: e.target.value })}
+                            disabled={updatingId === user.id}
+                            options={[
+                              { value: 'ACTIVE', label: 'نشط' },
+                              { value: 'SUSPENDED', label: 'موقوف' },
+                              { value: 'BANNED', label: 'محظور' },
+                            ]}
+                            style={{ width: '100px' }}
+                          />
+                        </VStack>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {pagination.totalPages > 1 && (
+              <HStack gap={4} justify="center" mt={6}>
+                <Button
+                  size="sm"
+                  disabled={pagination.page <= 1}
+                  onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+                >
+                  السابق
+                </Button>
+                <Box color="text.secondary" fontSize="sm">
+                  الصفحة {pagination.page} من {pagination.totalPages} ({pagination.total} إجمالي)
+                </Box>
+                <Button
+                  size="sm"
+                  disabled={pagination.page >= pagination.totalPages}
+                  onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+                >
+                  التالي
+                </Button>
+              </HStack>
+            )}
+          </>
         )}
       </Box>
     </VStack>

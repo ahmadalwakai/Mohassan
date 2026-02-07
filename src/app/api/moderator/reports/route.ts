@@ -4,16 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/core/auth/guards';
+import { requireModerator } from '@/core/auth/guards';
 import { prisma } from '@/core/db/prisma';
 import { parseReportStatusOrDefault, type ReportStatus } from '@/lib/validators/enums';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session?.user || !['MODERATOR', 'ADMIN'].includes(session.user.role)) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+    await requireModerator();
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');

@@ -189,3 +189,69 @@ export async function sendRoleChangeEmail(
     console.error('[EMAIL_ROLE_CHANGE_FAIL] Error:', error);
   }
 }
+
+/**
+ * Generate password reset email HTML
+ */
+function generatePasswordResetEmailHTML(resetUrl: string, name: string): string {
+  return `
+    <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <h1 style="color: #FF6B6B;">مرحباً ${name}!</h1>
+      <p>تلقينا طلب إعادة تعيين كلمة المرور لحسابك على موحسن.</p>
+      <p>انقر على الرابط أدناه لإعادة تعيين كلمة المرور الخاصة بك:</p>
+      <a href="${resetUrl}" style="display: inline-block; background-color: #FF6B6B; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin: 20px 0;">
+        إعادة تعيين كلمة المرور
+      </a>
+      <p style="color: #666;">هذا الرابط صالح لمدة ساعة واحدة فقط.</p>
+      <p style="color: #666;">إذا لم تطلب إعادة تعيين كلمة المرور، يرجى تجاهل هذه الرسالة أو الاتصال بنا على الفور إذا شعرت بأن حسابك قد تم اختراقه.</p>
+    </div>
+  `;
+}
+
+/**
+ * Send password reset email via Resend
+ */
+export async function sendPasswordResetEmail(
+  email: string,
+  token: string,
+  name: string
+): Promise<void> {
+  const baseUrl = getBaseUrl();
+  const resetUrl = `${baseUrl}/reset-password?token=${token}`;
+
+  console.log('[EMAIL_RESET_URL]', resetUrl);
+  console.log('[EMAIL_RESET_START] Recipient:', email, '| RESEND_API_KEY exists:', !!process.env.RESEND_API_KEY);
+
+  if (!process.env.RESEND_API_KEY) {
+    console.log('[EMAIL_RESET_SKIP] No RESEND_API_KEY configured');
+    console.log('======================================');
+    console.log('PASSWORD RESET EMAIL (Resend not configured)');
+    console.log(`To: ${email}`);
+    console.log(`Name: ${name}`);
+    console.log(`Reset URL: ${resetUrl}`);
+    console.log('======================================');
+    return;
+  }
+
+  try {
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
+    const fromAddress = process.env.EMAIL_FROM || 'Mohassan <noreply@mohassansy.com>';
+
+    const result = await resend.emails.send({
+      from: fromAddress,
+      to: email,
+      subject: 'إعادة تعيين كلمة المرور - موحسن',
+      html: generatePasswordResetEmailHTML(resetUrl, name),
+    });
+
+    if (result.error) {
+      console.error('[EMAIL_RESET_FAIL] Resend API error:', result.error.message);
+      return;
+    }
+
+    console.log('[EMAIL_RESET_OK] Response:', JSON.stringify(result));
+  } catch (error) {
+    console.error('[EMAIL_RESET_FAIL] Error:', error);
+  }
+}

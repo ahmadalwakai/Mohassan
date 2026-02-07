@@ -32,7 +32,7 @@ export async function POST(
     }
 
     // Check if user is moderator or admin
-    const userRole = (session.user as { role?: string }).role;
+    const userRole = (session.user as { role?: string }).role as 'USER' | 'MODERATOR' | 'ADMIN' | undefined;
     if (!userRole || !['ADMIN', 'MODERATOR'].includes(userRole)) {
       return NextResponse.json(
         { error: 'غير مصرح' },
@@ -58,7 +58,8 @@ export async function POST(
       case 'approve':
         result = await moderationService.approveContent(
           id, 
-          session.user.id, 
+          session.user.id,
+          userRole,
           skipAI ?? false
         );
         break;
@@ -70,7 +71,7 @@ export async function POST(
             { status: 400 }
           );
         }
-        result = await moderationService.rejectContent(id, session.user.id, reason);
+        result = await moderationService.rejectContent(id, session.user.id, userRole, reason);
         break;
       
       case 'takedown':
@@ -80,7 +81,7 @@ export async function POST(
             { status: 400 }
           );
         }
-        result = await moderationService.takedownContent(id, session.user.id, reason);
+        result = await moderationService.takedownContent(id, session.user.id, userRole, reason);
         break;
     }
 

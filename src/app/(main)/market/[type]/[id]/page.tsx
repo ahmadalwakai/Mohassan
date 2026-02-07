@@ -1,12 +1,13 @@
 /**
  * Market Item Detail Page
+ * Dynamic page for viewing market items with type and id
  */
 
 import { Metadata } from 'next';
-import { ContentDetail, getContentData } from '@/components/content';
+import { ContentDetail, EnhancedContentDetail, getContentData } from '@/components/content';
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ type: string; id: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -25,5 +26,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function MarketDetailPage({ params }: PageProps) {
   const { id } = await params;
-  return <ContentDetail id={id} />;
+  return (
+    <EnhancedContentDetail contentId={id}>
+      <ContentDetail id={id} />
+    </EnhancedContentDetail>
+  );
 }

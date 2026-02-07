@@ -28,6 +28,9 @@ export interface ContentCardProps {
   tags?: Array<{ tag: { id: string; name: string; slug: string } }>;
   showStatus?: boolean;
   variant?: 'default' | 'compact' | 'featured';
+  slug?: string;
+  category?: string;
+  marketType?: string;
 }
 
 const typeConfig: Record<string, { label: string; color: string; href: string }> = {
@@ -51,9 +54,23 @@ export const ContentCard = ({
   tags,
   showStatus = false,
   variant = 'default',
+  slug,
+  category,
+  marketType,
 }: ContentCardProps) => {
   const typeInfo = typeConfig[type] || { label: type, color: 'gray', href: '#' };
-  const href = `${typeInfo.href}/${id}`;
+  
+  // Build href based on type and available params
+  let href: string;
+  if (type === 'news') {
+    href = `${typeInfo.href}/${slug || id}`;
+  } else if (type === 'directory') {
+    href = `${typeInfo.href}/${category || 'general'}/${id}`;
+  } else if (type === 'market') {
+    href = `${typeInfo.href}/${marketType || 'general'}/${id}`;
+  } else {
+    href = `${typeInfo.href}/${id}`;
+  }
 
   const timeAgo = formatDistanceToNow(new Date(createdAt), {
     addSuffix: true,

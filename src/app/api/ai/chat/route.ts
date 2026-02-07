@@ -1,9 +1,12 @@
 /**
  * AI Chat Endpoint using Groq API
  * Real-time chat with AI assistant
+ * Respects admin-controlled settings and rate limits
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/core/auth';
+import { aiService } from '@/core/services';
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -15,12 +18,27 @@ interface ChatMessage {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'يجب تسجيل الدخول' }, { status: 401 });
+    }
+
+    // Check if AI is enabled
+    const aiEnabled = await aiService.isEnabled();
+    if (!aiEnabled) {
+      return NextResponse.json(
+        { error: 'الذكاء الاصطناعي غير متاح حالياً' },
+        { status: 503 }
+      );
+    }
+
     const apiKey = process.env.GROQ_API_KEY;
-    
+
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'GROQ_API_KEY not configured' },
-        { status: 500 }
+        { error: 'الذكاء الاصطناعي غير متاح حالياً' },
+        { status: 503 }
       );
     }
 
@@ -37,10 +55,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get AI settings for max tokens and custom prompt
+    const settings = await aiService.getSettings();
+    const maxTokens = settings.ai.maxTokens.chat;
+
     // Add system prompt for Arabic/English assistant
     const systemMessage: ChatMessage = {
       role: 'system',
-      content: `أنت مساعد ذكي يتحدث العربية والإنجليزية. اسمك "Typhoon AI".
+      content: settings.ai.prompts.chat || `أنت مساعد ذكي يتحدث العربية والإنجليزية. اسمك "Typhoon AI".
 مهمتك مساعدة المستخدمين في:
 - الإجابة على الأسئلة العامة
 - كتابة وتحرير النصوص
@@ -63,7 +85,7 @@ export async function POST(request: NextRequest) {
         model: GROQ_MODEL,
         messages: fullMessages,
         temperature,
-        max_tokens: 2048,
+        max_tokens: maxTokens,
       }),
     });
 

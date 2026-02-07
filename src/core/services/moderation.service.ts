@@ -6,6 +6,8 @@
 import { prisma } from '@/core/db/prisma';
 import { ContentStatus, UserStatus, Prisma } from '@prisma/client';
 import { aiService } from './ai.service';
+import { writeAuditLog } from '@/core/logging/audit';
+import type { Role } from '@/core/config/rbac';
 
 export interface ModerationStats {
   pendingContent: number;
@@ -94,7 +96,7 @@ export const moderationService = {
   /**
    * Approve content with optional AI check
    */
-  async approveContent(contentId: string, moderatorId: string, skipAI = false) {
+  async approveContent(contentId: string, moderatorId: string, moderatorRole: Role = 'MODERATOR', skipAI = false) {
     const content = await prisma.content.findUnique({
       where: { id: contentId },
       select: { id: true, title: true, body: true, authorId: true },
@@ -131,25 +133,42 @@ export const moderationService = {
       },
     });
 
-    // Notify author
-    await prisma.notification.create({
+    // Create ModerationAction
+    await prisma.moderationAction.create({
       data: {
-        type: 'SYSTEM',
-        title: 'تمت الموافقة على محتواك',
-        message: `تمت الموافقة على "${content.title}" وأصبح مرئياً للجميع`,
-        userId: content.authorId,
+        type: 'RESTORE',
+        reason: 'Content approved',
+        targetContentId: contentId,
+        moderatorId,
       },
     });
 
-    // Log moderation action
-    await prisma.moderationLog.create({
+    // Notify author with metadata
+    await prisma.notification.create({
       data: {
-        action: 'APPROVE_CONTENT',
-        targetType: 'CONTENT',
-        targetId: contentId,
-        moderatorId,
-        details: { title: content.title },
+        type: 'MODERATION',
+        title: 'تمت الموافقة على محتواك',
+        message: `تمت الموافقة على "${content.title}" وأصبح مرئياً للجميع`,
+        userId: content.authorId,
+        metadata: {
+          actorRole: moderatorRole,
+          actionType: 'APPROVE',
+          targetType: 'CONTENT',
+          targetId: contentId,
+          reason: 'Content approved',
+          createdAt: new Date(),
+        },
       },
+    });
+
+    // Log action to audit log
+    await writeAuditLog({
+      action: 'CONTENT_CREATED',
+      actorId: moderatorId,
+      actorRole: moderatorRole,
+      targetType: 'CONTENT',
+      targetId: contentId,
+      metadata: { title: content.title },
     });
 
     return { approved: true, content: updated };
@@ -158,7 +177,7 @@ export const moderationService = {
   /**
    * Reject content with reason
    */
-  async rejectContent(contentId: string, moderatorId: string, reason: string) {
+  async rejectContent(contentId: string, moderatorId: string, moderatorRole: Role = 'MODERATOR', reason: string) {
     const content = await prisma.content.findUnique({
       where: { id: contentId },
       select: { id: true, title: true, authorId: true },
@@ -176,34 +195,51 @@ export const moderationService = {
       },
     });
 
-    // Notify author
-    await prisma.notification.create({
+    // Create ModerationAction
+    await prisma.moderationAction.create({
       data: {
-        type: 'SYSTEM',
-        title: 'تم رفض محتواك',
-        message: `تم رفض "${content.title}": ${reason}`,
-        userId: content.authorId,
+        type: 'DELETE',
+        reason,
+        targetContentId: contentId,
+        moderatorId,
       },
     });
 
-    // Log moderation action
-    await prisma.moderationLog.create({
+    // Notify author with metadata
+    await prisma.notification.create({
       data: {
-        action: 'REJECT_CONTENT',
-        targetType: 'CONTENT',
-        targetId: contentId,
-        moderatorId,
-        details: { title: content.title, reason },
+        type: 'MODERATION',
+        title: 'تم رفض محتواك',
+        message: `تم رفض "${content.title}": ${reason}`,
+        userId: content.authorId,
+        metadata: {
+          actorRole: moderatorRole,
+          actionType: 'REJECT',
+          targetType: 'CONTENT',
+          targetId: contentId,
+          reason,
+          createdAt: new Date(),
+        },
       },
+    });
+
+    // Log action to audit log
+    await writeAuditLog({
+      action: 'CONTENT_DELETED',
+      actorId: moderatorId,
+      actorRole: moderatorRole,
+      targetType: 'CONTENT',
+      targetId: contentId,
+      metadata: { title: content.title, reason },
     });
 
     return updated;
   },
 
   /**
-   * Take down published content
+   * Take down published content (hide)
    */
-  async takedownContent(contentId: string, moderatorId: string, reason: string) {
+  async takedownContent(contentId: string, moderatorId: string, moderatorRole: Role = 'MODERATOR', reason: string) {
     const content = await prisma.content.findUnique({
       where: { id: contentId },
       select: { id: true, title: true, status: true, authorId: true },
@@ -220,7 +256,7 @@ export const moderationService = {
     const updated = await prisma.content.update({
       where: { id: contentId },
       data: {
-        status: ContentStatus.REJECTED,
+        status: ContentStatus.HIDDEN,
         rejectionReason: `تمت إزالة المحتوى: ${reason}`,
       },
     });
@@ -236,25 +272,42 @@ export const moderationService = {
       },
     });
 
-    // Notify author
-    await prisma.notification.create({
+    // Create ModerationAction
+    await prisma.moderationAction.create({
       data: {
-        type: 'SYSTEM',
-        title: 'تمت إزالة محتواك',
-        message: `تمت إزالة "${content.title}" بسبب: ${reason}`,
-        userId: content.authorId,
+        type: 'HIDE',
+        reason,
+        targetContentId: contentId,
+        moderatorId,
       },
     });
 
-    // Log moderation action
-    await prisma.moderationLog.create({
+    // Notify author with metadata
+    await prisma.notification.create({
       data: {
-        action: 'TAKEDOWN_CONTENT',
-        targetType: 'CONTENT',
-        targetId: contentId,
-        moderatorId,
-        details: { title: content.title, reason },
+        type: 'MODERATION',
+        title: 'تمت إزالة محتواك',
+        message: `تمت إزالة "${content.title}" بسبب: ${reason}`,
+        userId: content.authorId,
+        metadata: {
+          actorRole: moderatorRole,
+          actionType: 'HIDE',
+          targetType: 'CONTENT',
+          targetId: contentId,
+          reason,
+          createdAt: new Date(),
+        },
       },
+    });
+
+    // Log action to audit log
+    await writeAuditLog({
+      action: 'CONTENT_HIDDEN',
+      actorId: moderatorId,
+      actorRole: moderatorRole,
+      targetType: 'CONTENT',
+      targetId: contentId,
+      metadata: { title: content.title, reason },
     });
 
     return updated;
@@ -263,7 +316,7 @@ export const moderationService = {
   /**
    * Warn a user
    */
-  async warnUser(userId: string, moderatorId: string, reason: string) {
+  async warnUser(userId: string, moderatorId: string, moderatorRole: Role = 'MODERATOR', reason: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true, warningsCount: true },
@@ -281,28 +334,45 @@ export const moderationService = {
 
     // Auto-ban after 3 warnings
     if (updated.warningsCount >= 3 && updated.status === UserStatus.ACTIVE) {
-      await this.banUser(userId, moderatorId, 'تجاوز عدد التحذيرات المسموح', 7);
+      await this.banUser(userId, moderatorId, moderatorRole, 'تجاوز عدد التحذيرات المسموح', 7);
     }
 
-    // Notify user
-    await prisma.notification.create({
+    // Create ModerationAction
+    await prisma.moderationAction.create({
       data: {
-        type: 'SYSTEM',
-        title: 'تحذير',
-        message: `لقد تلقيت تحذيراً: ${reason}`,
-        userId,
+        type: 'WARN',
+        reason,
+        targetUserId: userId,
+        moderatorId,
       },
     });
 
-    // Log action
-    await prisma.moderationLog.create({
+    // Notify user with metadata
+    await prisma.notification.create({
       data: {
-        action: 'WARN_USER',
-        targetType: 'USER',
-        targetId: userId,
-        moderatorId,
-        details: { reason, warningsCount: updated.warningsCount },
+        type: 'MODERATION',
+        title: 'تحذير',
+        message: `لقد تلقيت تحذيراً: ${reason}`,
+        userId,
+        metadata: {
+          actorRole: moderatorRole,
+          actionType: 'WARN',
+          targetType: 'USER',
+          targetId: userId,
+          reason,
+          createdAt: new Date(),
+        },
       },
+    });
+
+    // Log action to audit log
+    await writeAuditLog({
+      action: 'CONTENT_WARNED',
+      actorId: moderatorId,
+      actorRole: moderatorRole,
+      targetType: 'USER',
+      targetId: userId,
+      metadata: { reason, warningsCount: updated.warningsCount },
     });
 
     return updated;
@@ -311,7 +381,7 @@ export const moderationService = {
   /**
    * Ban a user
    */
-  async banUser(userId: string, moderatorId: string, reason: string, durationDays?: number) {
+  async banUser(userId: string, moderatorId: string, moderatorRole: Role = 'MODERATOR', reason: string, durationDays?: number) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, name: true, role: true },
@@ -339,27 +409,47 @@ export const moderationService = {
       },
     });
 
-    // Notify user
+    // Create ModerationAction
+    await prisma.moderationAction.create({
+      data: {
+        type: durationDays ? 'TEMP_BAN' : 'PERM_BAN',
+        reason,
+        targetUserId: userId,
+        moderatorId,
+        duration: durationDays ? durationDays * 24 : undefined,
+        expiresAt: banExpiry || undefined,
+      },
+    });
+
+    // Notify user with metadata
     await prisma.notification.create({
       data: {
-        type: 'SYSTEM',
+        type: 'MODERATION',
         title: 'تم حظر حسابك',
         message: durationDays
           ? `تم حظر حسابك لمدة ${durationDays} أيام: ${reason}`
           : `تم حظر حسابك نهائياً: ${reason}`,
         userId,
+        metadata: {
+          actorRole: moderatorRole,
+          actionType: durationDays ? 'TEMP_BAN' : 'PERM_BAN',
+          targetType: 'USER',
+          targetId: userId,
+          reason,
+          createdAt: new Date(),
+        },
       },
     });
 
-    // Log action
-    await prisma.moderationLog.create({
-      data: {
-        action: 'BAN_USER',
-        targetType: 'USER',
-        targetId: userId,
-        moderatorId,
-        details: { reason, durationDays, banExpiry },
-      },
+    // Log action to audit log
+    const auditAction = durationDays ? ('USER_BANNED' as const) : ('USER_BANNED' as const);
+    await writeAuditLog({
+      action: auditAction,
+      actorId: moderatorId,
+      actorRole: moderatorRole,
+      targetType: 'USER',
+      targetId: userId,
+      metadata: { reason, durationDays, banExpiry },
     });
 
     return updated;
@@ -368,7 +458,7 @@ export const moderationService = {
   /**
    * Unban a user
    */
-  async unbanUser(userId: string, moderatorId: string, reason: string) {
+  async unbanUser(userId: string, moderatorId: string, moderatorRole: Role = 'MODERATOR', reason: string) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, status: true },
@@ -392,25 +482,42 @@ export const moderationService = {
       },
     });
 
-    // Notify user
-    await prisma.notification.create({
+    // Create ModerationAction
+    await prisma.moderationAction.create({
       data: {
-        type: 'SYSTEM',
-        title: 'تم إلغاء حظر حسابك',
-        message: `تم إلغاء حظر حسابك: ${reason}`,
-        userId,
+        type: 'UNBAN',
+        reason,
+        targetUserId: userId,
+        moderatorId,
       },
     });
 
-    // Log action
-    await prisma.moderationLog.create({
+    // Notify user with metadata
+    await prisma.notification.create({
       data: {
-        action: 'UNBAN_USER',
-        targetType: 'USER',
-        targetId: userId,
-        moderatorId,
-        details: { reason },
+        type: 'MODERATION',
+        title: 'تم إلغاء حظر حسابك',
+        message: `تم إلغاء حظر حسابك: ${reason}`,
+        userId,
+        metadata: {
+          actorRole: moderatorRole,
+          actionType: 'UNBAN',
+          targetType: 'USER',
+          targetId: userId,
+          reason,
+          createdAt: new Date(),
+        },
       },
+    });
+
+    // Log action to audit log
+    await writeAuditLog({
+      action: 'USER_UNBANNED',
+      actorId: moderatorId,
+      actorRole: moderatorRole,
+      targetType: 'USER',
+      targetId: userId,
+      metadata: { reason },
     });
 
     return updated;
@@ -469,9 +576,9 @@ export const moderationService = {
   /**
    * Bulk moderate content
    */
-  async bulkApprove(contentIds: string[], moderatorId: string) {
+  async bulkApprove(contentIds: string[], moderatorId: string, moderatorRole: Role = 'MODERATOR') {
     const results = await Promise.allSettled(
-      contentIds.map((id) => this.approveContent(id, moderatorId, true))
+      contentIds.map((id) => this.approveContent(id, moderatorId, moderatorRole, true))
     );
 
     const succeeded = results.filter((r) => r.status === 'fulfilled').length;
@@ -483,9 +590,9 @@ export const moderationService = {
   /**
    * Bulk reject content
    */
-  async bulkReject(contentIds: string[], moderatorId: string, reason: string) {
+  async bulkReject(contentIds: string[], moderatorId: string, moderatorRole: Role = 'MODERATOR', reason: string) {
     const results = await Promise.allSettled(
-      contentIds.map((id) => this.rejectContent(id, moderatorId, reason))
+      contentIds.map((id) => this.rejectContent(id, moderatorId, moderatorRole, reason))
     );
 
     const succeeded = results.filter((r) => r.status === 'fulfilled').length;

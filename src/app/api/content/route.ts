@@ -80,6 +80,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user is banned or suspended
+    const userStatus = (session.user as { status?: string }).status;
+    if (userStatus === 'BANNED') {
+      return NextResponse.json(
+        { error: 'تم تعليق هذا الحساب' },
+        { status: 403 }
+      );
+    }
+    
+    if (userStatus === 'SUSPENDED') {
+      return NextResponse.json(
+        { error: 'تم تعليق هذا الحساب مؤقتاً' },
+        { status: 403 }
+      );
+    }
+
     // Check email verification
     if (!session.user.emailVerified) {
       return NextResponse.json(

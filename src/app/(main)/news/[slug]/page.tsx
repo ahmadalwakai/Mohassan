@@ -1,19 +1,19 @@
 /**
  * News Detail Page
- * Dynamic page for viewing individual news items
+ * Dynamic page for viewing individual news items by slug
  */
 
 import { Metadata } from 'next';
-import { ContentDetail, getContentData } from '@/components/content';
+import { ContentDetail, EnhancedContentDetail, getContentData } from '@/components/content';
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 // Generate metadata for the page
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
-  const content = await getContentData(id);
+  const { slug } = await params;
+  const content = await getContentData(slug);
 
   if (!content) {
     return { title: 'غير موجود | موحسن' };
@@ -31,6 +31,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function NewsDetailPage({ params }: PageProps) {
-  const { id } = await params;
-  return <ContentDetail id={id} />;
+  const { slug } = await params;
+  return (
+    <EnhancedContentDetail contentId={slug}>
+      <ContentDetail id={slug} />
+    </EnhancedContentDetail>
+  );
 }

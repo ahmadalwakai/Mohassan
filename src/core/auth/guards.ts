@@ -5,6 +5,7 @@
 
 import { auth } from './auth';
 import { type Role, hasPermission, isAtLeastRole, type Permission } from '@/core/config/rbac';
+import type { UserStatus } from '@prisma/client';
 
 interface SessionUser {
   id: string;
@@ -12,6 +13,7 @@ interface SessionUser {
   name?: string | null;
   image?: string | null;
   role: Role;
+  status: UserStatus;
   emailVerified: Date | null;
 }
 
@@ -41,8 +43,18 @@ export async function getCurrentUser(): Promise<SessionUser> {
   if (!session?.user) {
     throw new AuthError('يجب تسجيل الدخول للوصول إلى هذه الصفحة', 'UNAUTHENTICATED');
   }
+
+  // Check if user is banned or suspended
+  const user = session.user as SessionUser;
+  if (user.status === 'BANNED') {
+    throw new AuthError('تم تعليق هذا الحساب', 'ACCOUNT_BANNED');
+  }
   
-  return session.user as SessionUser;
+  if (user.status === 'SUSPENDED') {
+    throw new AuthError('تم تعليق هذا الحساب مؤقتاً', 'ACCOUNT_BANNED');
+  }
+
+  return user;
 }
 
 /**

@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { contentService } from '@/core/services';
 import { Card, CardBody, Badge, Avatar, Button } from '@/components/ui';
 import { ContentCard } from '@/components/content';
+import { InitiativeJoinButton } from '@/components/content/initiative-join-button';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ar } from 'date-fns/locale';
 
@@ -155,13 +156,16 @@ export async function ContentDetail({ id }: ContentDetailProps) {
           </Card>
 
           {/* Actions */}
-          <HStack gap={3} justify="center">
+          <HStack gap={3} justify="center" flexWrap="wrap">
             <Button variant="outline">
               📤 مشاركة
             </Button>
             <Button variant="ghost">
               ⭐ حفظ
             </Button>
+            {content.type === 'initiative' && (
+              <InitiativeJoinButton initiativeId={content.id} ownerId={content.authorId} />
+            )}
             <Button variant="ghost" color="red.400">
               ⚠️ إبلاغ
             </Button>

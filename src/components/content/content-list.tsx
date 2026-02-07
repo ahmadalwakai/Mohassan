@@ -52,6 +52,10 @@ interface ContentItem {
   createdAt: string;
   viewCount?: number;
   tags?: Array<{ tag: { id: string; name: string; slug: string } }>;
+  slug?: string;
+  metadata?: Record<string, unknown>;
+  category?: string;
+  marketType?: string;
 }
 
 export const ContentList = ({
@@ -192,13 +196,25 @@ export const ContentList = ({
       {!loading && !error && data && data.items.length > 0 && (
         <>
           <ContentGrid columns={columns}>
-            {data.items.map((item) => (
-              <ContentCard
-                key={item.id}
-                {...item}
-                showStatus={showStatus}
-              />
-            ))}
+            {data.items.map((item) => {
+              // Extract category/marketType from metadata
+              const category = item.type === 'directory' 
+                ? (item.metadata?.category as string) || 'general'
+                : undefined;
+              const marketType = item.type === 'market'
+                ? (item.metadata?.type as string) || 'general'
+                : undefined;
+              
+              return (
+                <ContentCard
+                  key={item.id}
+                  {...item}
+                  category={category}
+                  marketType={marketType}
+                  showStatus={showStatus}
+                />
+              );
+            })}
           </ContentGrid>
 
           {/* Pagination */}

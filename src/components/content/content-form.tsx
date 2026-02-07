@@ -40,6 +40,18 @@ const typeFields: Record<ContentType, { showPrice: boolean; showLocation: boolea
   initiative: { showPrice: false, showLocation: true, showContact: true },
 };
 
+// Generate URL-friendly slug from title
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .trim()
+    .replace(/[\s]+/g, '-')
+    .replace(/[^\u0600-\u06FF\w\-]/g, '')
+    .replace(/\-\-+/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
+}
+
 interface ContentFormProps {
   mode: 'create' | 'edit';
   contentType?: ContentType;
@@ -179,13 +191,27 @@ export default function ContentForm({ mode, contentType: initialType, initialDat
         finalImageUrl = url;
       }
       
+      // Generate slug for news
+      const slug = type === 'news' ? generateSlug(title) : undefined;
+      
+      // Build metadata for directory and market
+      const metadata: Record<string, any> = {};
+      if (type === 'directory' && location) {
+        metadata.category = location;
+      }
+      if (type === 'market' && location) {
+        metadata.type = location;
+      }
+      
       // Prepare content data
       const contentData = {
         title: title.trim(),
         body: body.trim(),
         type,
         tags,
+        slug,
         imageUrl: finalImageUrl || undefined,
+        metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
         ...(fieldConfig.showPrice && price ? { price: parseFloat(price) } : {}),
         ...(fieldConfig.showLocation && location ? { location: location.trim() } : {}),
         ...(fieldConfig.showContact && contactInfo ? { contactInfo: contactInfo.trim() } : {}),
@@ -209,9 +235,19 @@ export default function ContentForm({ mode, contentType: initialType, initialDat
       
       const result = await res.json();
       
-      // Redirect to content page
-      const typeRoute = type === 'initiative' ? 'initiatives' : type;
-      router.push(`/${typeRoute}/${result.id}`);
+      // Redirect to content page using new routing
+      let redirectUrl: string;
+      if (type === 'news') {
+        redirectUrl = `/news/${result.slug || result.id}`;
+      } else if (type === 'directory') {
+        redirectUrl = `/directory/${result.metadata?.category || 'general'}/${result.id}`;
+      } else if (type === 'market') {
+        redirectUrl = `/market/${result.metadata?.type || 'general'}/${result.id}`;
+      } else {
+        const typeRoute = type === 'initiative' ? 'initiatives' : type;
+        redirectUrl = `/${typeRoute}/${result.id}`;
+      }
+      router.push(redirectUrl);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'حدث خطأ غير متوقع');

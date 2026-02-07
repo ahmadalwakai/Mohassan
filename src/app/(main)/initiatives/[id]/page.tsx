@@ -3,7 +3,7 @@
  */
 
 import { Metadata } from 'next';
-import { ContentDetail, getContentData } from '@/components/content';
+import { ContentDetail, EnhancedContentDetail, getContentData } from '@/components/content';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -25,5 +25,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function InitiativeDetailPage({ params }: PageProps) {
   const { id } = await params;
-  return <ContentDetail id={id} />;
+  return (
+    <EnhancedContentDetail contentId={id}>
+      <ContentDetail id={id} />
+    </EnhancedContentDetail>
+  );
 }

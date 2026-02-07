@@ -4,15 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/core/auth/guards';
+import { requireAdmin, AuthError } from '@/core/auth/guards';
 import { prisma } from '@/core/db/prisma';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getSession();
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
-    }
+    // Require admin role
+    await requireAdmin();
 
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -65,6 +63,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('GET /api/admin/users error:', error);
+    
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.code === 'UNAUTHENTICATED' ? 401 : 403 });
+    }
+
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

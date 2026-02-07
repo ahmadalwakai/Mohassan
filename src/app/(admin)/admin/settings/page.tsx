@@ -1,348 +1,334 @@
 'use client';
 
-import { Box, Heading, Text, VStack, HStack, Input, Button, Badge } from '@chakra-ui/react';
+import { Box, Heading, Text, VStack, HStack, Input, Button, Textarea } from '@chakra-ui/react';
 import { useState, useCallback, useEffect } from 'react';
-import { Table, TableHeader, TableBody, TableRow, TableHeadCell, TableCell } from '@/components/ui/table';
-import { Select } from '@/components/ui/select';
 
-interface StaffUser {
-  id: string;
-  email: string;
-  name: string | null;
-  role: 'ADMIN' | 'MODERATOR';
-  createdAt: string;
-  emailVerified: Date | null;
+interface Settings {
+  newsCategories: string[];
+  directoryCategories: string[];
+  marketTypes: string[];
+  forbiddenWords: string[];
+  moderationPolicy: {
+    warningThreshold: number;
+    autoHideFlagsCount: number;
+    autoHideThreshold: number;
+  };
+  aiUsageLimits: {
+    dailySearchLimit: number;
+    dailySummarizeLimit: number;
+    dailyTagLimit: number;
+  };
 }
 
 export default function AdminSettingsPage() {
-  const [staffUsers, setStaffUsers] = useState<StaffUser[]>([]);
-  const [allUsers, setAllUsers] = useState<{ id: string; email: string; name: string | null; role: string }[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [searchEmail, setSearchEmail] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [selectedRole, setSelectedRole] = useState<'ADMIN' | 'MODERATOR'>('MODERATOR');
-  const [actionLoading, setActionLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const [editedSettings, setEditedSettings] = useState<Settings | null>(null);
 
   const showMessage = (text: string, type: 'success' | 'error') => {
     setMessage({ text, type });
-    setTimeout(() => setMessage(null), 5000);
+    setTimeout(() => setMessage(null), 3000);
   };
 
-  const fetchStaffUsers = useCallback(async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/users?role=staff');
+      const res = await fetch('/api/admin/settings');
       if (res.ok) {
         const data = await res.json();
-        setStaffUsers(data.users.filter((u: StaffUser) => u.role === 'ADMIN' || u.role === 'MODERATOR'));
+        setSettings(data);
+        setEditedSettings(data);
+      } else {
+        showMessage('فشل تحميل الإعدادات', 'error');
       }
     } catch (error) {
-      console.error('Failed to fetch staff:', error);
-      showMessage('فشل تحميل المشرفين والمسؤولين', 'error');
+      console.error('Failed to fetch settings:', error);
+      showMessage('خطأ في تحميل الإعدادات', 'error');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const searchUsers = useCallback(async () => {
-    if (!searchEmail.trim()) {
-      setAllUsers([]);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(searchEmail)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setAllUsers(data.users.filter((u: { role: string }) => u.role === 'USER'));
-      }
-    } catch (error) {
-      console.error('Failed to search users:', error);
-    }
-  }, [searchEmail]);
-
   useEffect(() => {
-    fetchStaffUsers();
-  }, [fetchStaffUsers]);
+    fetchSettings();
+  }, [fetchSettings]);
 
-  useEffect(() => {
-    const debounce = setTimeout(searchUsers, 300);
-    return () => clearTimeout(debounce);
-  }, [searchUsers]);
+  async function saveSettings() {
+    if (!editedSettings) return;
 
-  async function promoteUser() {
-    if (!selectedUserId) {
-      showMessage('يرجى اختيار مستخدم', 'error');
-      return;
-    }
     try {
-      setActionLoading(true);
-      const res = await fetch(`/api/admin/users/${selectedUserId}/role`, {
-        method: 'POST',
+      setSaving(true);
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: selectedRole }),
+        body: JSON.stringify(editedSettings),
       });
+
       if (res.ok) {
-        showMessage(`تم ترقية المستخدم إلى ${selectedRole === 'ADMIN' ? 'مسؤول' : 'مشرف'} بنجاح`, 'success');
-        setSearchEmail('');
-        setSelectedUserId('');
-        setAllUsers([]);
-        fetchStaffUsers();
-      } else {
         const data = await res.json();
-        showMessage(data.error || 'فشل ترقية المستخدم', 'error');
+        setSettings(data);
+        setEditedSettings(data);
+        showMessage('تم حفظ الإعدادات بنجاح', 'success');
+      } else {
+        const error = await res.json();
+        showMessage(error.error || 'فشل حفظ الإعدادات', 'error');
       }
     } catch (error) {
-      console.error('Failed to promote user:', error);
-      showMessage('فشل ترقية المستخدم', 'error');
+      console.error('Failed to save settings:', error);
+      showMessage('خطأ في حفظ الإعدادات', 'error');
     } finally {
-      setActionLoading(false);
+      setSaving(false);
     }
   }
 
-  async function changeRole(userId: string, newRole: 'ADMIN' | 'MODERATOR' | 'USER') {
-    try {
-      setActionLoading(true);
-      const res = await fetch(`/api/admin/users/${userId}/role`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ role: newRole }),
-      });
-      if (res.ok) {
-        if (newRole === 'USER') {
-          showMessage('تم إزالة الصلاحيات بنجاح', 'success');
-        } else {
-          showMessage(`تم تحديث الدور إلى ${newRole === 'ADMIN' ? 'مسؤول' : 'مشرف'}`, 'success');
-        }
-        fetchStaffUsers();
-      } else {
-        const data = await res.json();
-        showMessage(data.error || 'فشل تحديث الدور', 'error');
-      }
-    } catch (error) {
-      console.error('Failed to change role:', error);
-      showMessage('فشل تحديث الدور', 'error');
-    } finally {
-      setActionLoading(false);
-    }
+  function updateArraySetting(key: keyof Settings, value: string) {
+    if (!editedSettings) return;
+    const items = value.split(',').map(item => item.trim()).filter(item => item.length > 0);
+    setEditedSettings({
+      ...editedSettings,
+      [key]: items,
+    });
   }
 
-  const admins = staffUsers.filter(u => u.role === 'ADMIN');
-  const moderators = staffUsers.filter(u => u.role === 'MODERATOR');
+  function updateNestedSetting(section: string, key: string, value: any) {
+    if (!editedSettings) return;
+    setEditedSettings({
+      ...editedSettings,
+      [section]: {
+        ...editedSettings[section as keyof Settings] as any,
+        [key]: value,
+      },
+    });
+  }
+
+  if (loading) {
+    return (
+      <VStack gap={6} align="stretch">
+        <Box color="text.secondary" py={8} textAlign="center">
+          جاري التحميل...
+        </Box>
+      </VStack>
+    );
+  }
+
+  if (!editedSettings) {
+    return (
+      <VStack gap={6} align="stretch">
+        <Box color="text.secondary" py={8} textAlign="center">
+          فشل تحميل الإعدادات
+        </Box>
+      </VStack>
+    );
+  }
 
   return (
     <VStack gap={6} align="stretch">
-      {/* Message notification */}
-      {message && (
-        <Box
-          p={4}
-          borderRadius="md"
-          bg={message.type === 'success' ? 'green.900' : 'red.900'}
-          borderWidth={1}
-          borderColor={message.type === 'success' ? 'green.500' : 'red.500'}
-        >
-          <Text color={message.type === 'success' ? 'green.200' : 'red.200'}>
-            {message.text}
-          </Text>
-        </Box>
-      )}
-
-      {/* System Settings Header */}
       <Box bg="bg.secondary" p={6} borderRadius="lg" borderWidth={1} borderColor="border.default">
         <Heading size="lg" color="text.primary" mb={2}>
           إعدادات النظام
         </Heading>
-        <Text color="text.secondary">
-          إدارة إعدادات المنصة والصلاحيات
+        <Text color="text.secondary" mb={4}>
+          إدارة إعدادات المنصة الرئيسية
         </Text>
-      </Box>
 
-      {/* Add New Admin/Moderator Section */}
-      <Box bg="bg.secondary" p={6} borderRadius="lg" borderWidth={1} borderColor="border.default">
-        <Heading size="md" color="text.primary" mb={4}>
-          إضافة مسؤول أو مشرف جديد
-        </Heading>
-        <VStack gap={4} align="stretch">
-          <HStack gap={4}>
-            <Input
-              placeholder="ابحث بالبريد الإلكتروني..."
-              value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
-              flex={2}
+        {message && (
+          <Box
+            mb={4}
+            p={3}
+            borderRadius="md"
+            bg={message.type === 'success' ? 'green.100' : 'red.100'}
+            color={message.type === 'success' ? 'green.800' : 'red.800'}
+          >
+            {message.text}
+          </Box>
+        )}
+
+        <VStack gap={6} align="stretch">
+          {/* News Categories */}
+          <Box>
+            <Heading size="sm" color="text.primary" mb={2}>
+              فئات الأخبار
+            </Heading>
+            <Text color="text.secondary" fontSize="sm" mb={2}>
+              أدخل الفئات مفصولة بفواصل
+            </Text>
+            <Textarea
+              value={editedSettings.newsCategories.join(', ')}
+              onChange={(e) => updateArraySetting('newsCategories', e.target.value)}
+              placeholder="اقتصاد, صحة, تقنية, رياضة..."
               color="text.primary"
+              minH="80px"
             />
-            <Select
-              value={selectedRole}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedRole(e.target.value as 'ADMIN' | 'MODERATOR')}
-              options={[
-                { value: 'MODERATOR', label: 'مشرف' },
-                { value: 'ADMIN', label: 'مسؤول' },
-              ]}
-              style={{ flex: 1 }}
+          </Box>
+
+          {/* Directory Categories */}
+          <Box>
+            <Heading size="sm" color="text.primary" mb={2}>
+              فئات الدليل
+            </Heading>
+            <Text color="text.secondary" fontSize="sm" mb={2}>
+              أدخل الفئات مفصولة بفواصل
+            </Text>
+            <Textarea
+              value={editedSettings.directoryCategories.join(', ')}
+              onChange={(e) => updateArraySetting('directoryCategories', e.target.value)}
+              placeholder="شركات, محترفون, خدمات, تعليم..."
+              color="text.primary"
+              minH="80px"
             />
+          </Box>
+
+          {/* Market Types */}
+          <Box>
+            <Heading size="sm" color="text.primary" mb={2}>
+              أنواع السوق
+            </Heading>
+            <Text color="text.secondary" fontSize="sm" mb={2}>
+              أدخل الأنواع مفصولة بفواصل
+            </Text>
+            <Textarea
+              value={editedSettings.marketTypes.join(', ')}
+              onChange={(e) => updateArraySetting('marketTypes', e.target.value)}
+              placeholder="sell, buy, jobs, realestate, lost..."
+              color="text.primary"
+              minH="80px"
+            />
+          </Box>
+
+          {/* Forbidden Words */}
+          <Box>
+            <Heading size="sm" color="text.primary" mb={2}>
+              الكلمات المحظورة
+            </Heading>
+            <Text color="text.secondary" fontSize="sm" mb={2}>
+              أدخل الكلمات مفصولة بفواصل (للفلترة التلقائية)
+            </Text>
+            <Textarea
+              value={editedSettings.forbiddenWords.join(', ')}
+              onChange={(e) => updateArraySetting('forbiddenWords', e.target.value)}
+              placeholder="أدخل الكلمات المحظورة..."
+              color="text.primary"
+              minH="80px"
+            />
+          </Box>
+
+          {/* Moderation Policy */}
+          <Box borderTop="1px solid" borderTopColor="border.default" pt={4}>
+            <Heading size="sm" color="text.primary" mb={4}>
+              سياسة الإشراف
+            </Heading>
+            <VStack gap={4} align="stretch">
+              <Box>
+                <Text color="text.primary" mb={2}>
+                  عتبة التحذيرات (قبل الحظر):
+                </Text>
+                <Input
+                  type="number"
+                  value={editedSettings.moderationPolicy.warningThreshold}
+                  onChange={(e) => updateNestedSetting('moderationPolicy', 'warningThreshold', parseInt(e.target.value))}
+                  min="1"
+                  max="10"
+                  color="text.primary"
+                />
+              </Box>
+              <Box>
+                <Text color="text.primary" mb={2}>
+                  عدد الأعلام لإخفاء المحتوى تلقائياً:
+                </Text>
+                <Input
+                  type="number"
+                  value={editedSettings.moderationPolicy.autoHideFlagsCount}
+                  onChange={(e) => updateNestedSetting('moderationPolicy', 'autoHideFlagsCount', parseInt(e.target.value))}
+                  min="1"
+                  max="20"
+                  color="text.primary"
+                />
+              </Box>
+              <Box>
+                <Text color="text.primary" mb={2}>
+                  نسبة الثقة لإخفاء المحتوى (0-1):
+                </Text>
+                <Input
+                  type="number"
+                  value={editedSettings.moderationPolicy.autoHideThreshold}
+                  onChange={(e) => updateNestedSetting('moderationPolicy', 'autoHideThreshold', parseFloat(e.target.value))}
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  color="text.primary"
+                />
+              </Box>
+            </VStack>
+          </Box>
+
+          {/* AI Usage Limits */}
+          <Box borderTop="1px solid" borderTopColor="border.default" pt={4}>
+            <Heading size="sm" color="text.primary" mb={4}>
+              حدود استخدام الذكاء الاصطناعي (يومياً)
+            </Heading>
+            <VStack gap={4} align="stretch">
+              <Box>
+                <Text color="text.primary" mb={2}>
+                  حد البحث اليومي:
+                </Text>
+                <Input
+                  type="number"
+                  value={editedSettings.aiUsageLimits.dailySearchLimit}
+                  onChange={(e) => updateNestedSetting('aiUsageLimits', 'dailySearchLimit', parseInt(e.target.value))}
+                  min="10"
+                  max="500"
+                  color="text.primary"
+                />
+              </Box>
+              <Box>
+                <Text color="text.primary" mb={2}>
+                  حد الملخص اليومي:
+                </Text>
+                <Input
+                  type="number"
+                  value={editedSettings.aiUsageLimits.dailySummarizeLimit}
+                  onChange={(e) => updateNestedSetting('aiUsageLimits', 'dailySummarizeLimit', parseInt(e.target.value))}
+                  min="10"
+                  max="500"
+                  color="text.primary"
+                />
+              </Box>
+              <Box>
+                <Text color="text.primary" mb={2}>
+                  حد التصنيف اليومي:
+                </Text>
+                <Input
+                  type="number"
+                  value={editedSettings.aiUsageLimits.dailyTagLimit}
+                  onChange={(e) => updateNestedSetting('aiUsageLimits', 'dailyTagLimit', parseInt(e.target.value))}
+                  min="10"
+                  max="500"
+                  color="text.primary"
+                />
+              </Box>
+            </VStack>
+          </Box>
+
+          {/* Save Button */}
+          <HStack gap={4} mt={6} justify="flex-end">
             <Button
-              colorScheme="green"
-              onClick={promoteUser}
-              disabled={!selectedUserId || actionLoading}
-              loading={actionLoading}
+              onClick={() => setEditedSettings(settings)}
+              variant="outline"
+              disabled={saving}
             >
-              إضافة
+              إلغاء
+            </Button>
+            <Button
+              onClick={saveSettings}
+              colorScheme="green"
+              loading={saving}
+            >
+              حفظ الإعدادات
             </Button>
           </HStack>
-
-          {/* User search results */}
-          {allUsers.length > 0 && (
-            <Box borderWidth={1} borderColor="border.default" borderRadius="md" p={2}>
-              <Text color="text.secondary" fontSize="sm" mb={2}>اختر مستخدم:</Text>
-              <VStack gap={2} align="stretch">
-                {allUsers.map((user) => (
-                  <HStack
-                    key={user.id}
-                    p={2}
-                    borderRadius="md"
-                    bg={selectedUserId === user.id ? 'green.900' : 'transparent'}
-                    borderWidth={1}
-                    borderColor={selectedUserId === user.id ? 'green.500' : 'border.default'}
-                    cursor="pointer"
-                    onClick={() => setSelectedUserId(user.id)}
-                    _hover={{ bg: 'bg.tertiary' }}
-                  >
-                    <Text color="text.primary" flex={1}>{user.email}</Text>
-                    <Text color="text.secondary" fontSize="sm">{user.name || 'بدون اسم'}</Text>
-                  </HStack>
-                ))}
-              </VStack>
-            </Box>
-          )}
         </VStack>
-      </Box>
-
-      {/* Admins List */}
-      <Box bg="bg.secondary" p={6} borderRadius="lg" borderWidth={1} borderColor="border.default">
-        <HStack mb={4} justify="space-between">
-          <Heading size="md" color="text.primary">
-            المسؤولون
-          </Heading>
-          <Badge colorScheme="red" fontSize="md" px={3} py={1}>
-            {admins.length}
-          </Badge>
-        </HStack>
-
-        {loading ? (
-          <Text color="text.secondary">جاري التحميل...</Text>
-        ) : admins.length === 0 ? (
-          <Text color="text.secondary">لا يوجد مسؤولون</Text>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeadCell align="right">البريد الإلكتروني</TableHeadCell>
-                <TableHeadCell align="right">الاسم</TableHeadCell>
-                <TableHeadCell align="right">الحالة</TableHeadCell>
-                <TableHeadCell align="right">الإجراءات</TableHeadCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {admins.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell align="right">{user.email}</TableCell>
-                  <TableCell align="right">{user.name || '-'}</TableCell>
-                  <TableCell align="right">
-                    <Badge colorScheme={user.emailVerified ? 'green' : 'yellow'}>
-                      {user.emailVerified ? 'مفعل' : 'غير مفعل'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell align="right">
-                    <HStack gap={2}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="blue"
-                        onClick={() => changeRole(user.id, 'MODERATOR')}
-                        disabled={actionLoading}
-                      >
-                        تحويل لمشرف
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="red"
-                        onClick={() => changeRole(user.id, 'USER')}
-                        disabled={actionLoading}
-                      >
-                        إزالة الصلاحيات
-                      </Button>
-                    </HStack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Box>
-
-      {/* Moderators List */}
-      <Box bg="bg.secondary" p={6} borderRadius="lg" borderWidth={1} borderColor="border.default">
-        <HStack mb={4} justify="space-between">
-          <Heading size="md" color="text.primary">
-            المشرفون
-          </Heading>
-          <Badge colorScheme="teal" fontSize="md" px={3} py={1}>
-            {moderators.length}
-          </Badge>
-        </HStack>
-
-        {loading ? (
-          <Text color="text.secondary">جاري التحميل...</Text>
-        ) : moderators.length === 0 ? (
-          <Text color="text.secondary">لا يوجد مشرفون</Text>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHeadCell align="right">البريد الإلكتروني</TableHeadCell>
-                <TableHeadCell align="right">الاسم</TableHeadCell>
-                <TableHeadCell align="right">الحالة</TableHeadCell>
-                <TableHeadCell align="right">الإجراءات</TableHeadCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {moderators.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell align="right">{user.email}</TableCell>
-                  <TableCell align="right">{user.name || '-'}</TableCell>
-                  <TableCell align="right">
-                    <Badge colorScheme={user.emailVerified ? 'green' : 'yellow'}>
-                      {user.emailVerified ? 'مفعل' : 'غير مفعل'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell align="right">
-                    <HStack gap={2}>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="purple"
-                        onClick={() => changeRole(user.id, 'ADMIN')}
-                        disabled={actionLoading}
-                      >
-                        ترقية لمسؤول
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="red"
-                        onClick={() => changeRole(user.id, 'USER')}
-                        disabled={actionLoading}
-                      >
-                        إزالة الصلاحيات
-                      </Button>
-                    </HStack>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
       </Box>
     </VStack>
   );

@@ -10,7 +10,7 @@ import Credentials from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { compare } from 'bcryptjs';
 import { prisma } from '@/core/db/prisma';
-import type { Role } from '@prisma/client';
+import type { Role, UserStatus } from '@prisma/client';
 
 // Extend the built-in session types
 declare module 'next-auth' {
@@ -21,12 +21,15 @@ declare module 'next-auth' {
       name?: string | null;
       image?: string | null;
       role: Role;
+      status: UserStatus;
       emailVerified: Date | null;
     };
   }
   
   interface User {
+    id: string;
     role: Role;
+    status: UserStatus;
     emailVerified: Date | null;
   }
 }
@@ -35,6 +38,7 @@ declare module 'next-auth' {
 interface ExtendedJWT extends JWT {
   id?: string;
   role?: Role;
+  status?: UserStatus;
   emailVerified?: Date | null;
 }
 
@@ -111,6 +115,7 @@ export const authOptions: NextAuthConfig = {
           name: user.name,
           image: user.image,
           role: user.role,
+          status: user.status,
           emailVerified: user.emailVerified,
         };
       },
@@ -136,6 +141,7 @@ export const authOptions: NextAuthConfig = {
       if (user) {
         extToken.id = user.id!;
         extToken.role = user.role;
+        extToken.status = user.status;
         extToken.emailVerified = user.emailVerified;
       }
       
@@ -143,6 +149,7 @@ export const authOptions: NextAuthConfig = {
       if (trigger === 'update' && session) {
         extToken.emailVerified = session.emailVerified;
         extToken.role = session.role;
+        extToken.status = session.status;
       }
       
       return extToken;
@@ -154,26 +161,43 @@ export const authOptions: NextAuthConfig = {
       if (extToken) {
         session.user.id = extToken.id ?? '';
         session.user.role = extToken.role ?? 'USER';
+        session.user.status = extToken.status ?? 'ACTIVE';
         session.user.emailVerified = extToken.emailVerified ?? null;
       }
       return session;
     },
 
     async signIn({ user, account }) {
-      // For OAuth providers, check if user is banned
-      if (account?.provider !== 'credentials') {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-        });
-        
-        if (dbUser?.status === 'BANNED') {
-          if (dbUser.banExpiry && dbUser.banExpiry > new Date()) {
-            return false;
-          }
-          if (!dbUser.banExpiry) {
-            return false;
-          }
+      // Check user status for ALL providers (credentials + OAuth)
+      const dbUser = await prisma.user.findUnique({
+        where: { email: user.email! },
+      });
+      
+      if (!dbUser) {
+        return true; // User will be created by adapter
+      }
+
+      // Reject SUSPENDED users (temporary)
+      if (dbUser.status === 'SUSPENDED') {
+        return false;
+      }
+
+      // Reject BANNED users
+      if (dbUser.status === 'BANNED') {
+        // Check if ban has expired
+        if (dbUser.banExpiry && dbUser.banExpiry > new Date()) {
+          // Temp ban still active
+          return false;
         }
+        if (!dbUser.banExpiry) {
+          // Permanent ban
+          return false;
+        }
+        // Ban expired, unban user automatically
+        await prisma.user.update({
+          where: { id: dbUser.id },
+          data: { status: 'ACTIVE', bannedAt: null, banExpiry: null, banReason: null },
+        });
       }
       
       return true;

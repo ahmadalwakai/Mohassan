@@ -32,7 +32,7 @@ export async function POST(
     }
 
     // Check if user is admin
-    const userRole = (session.user as { role?: string }).role;
+    const userRole = (session.user as { role?: string }).role as 'USER' | 'MODERATOR' | 'ADMIN' | undefined;
     if (userRole !== 'ADMIN') {
       return NextResponse.json(
         { error: 'إدارة المستخدمين متاحة للمدراء فقط' },
@@ -65,15 +65,15 @@ export async function POST(
     let result;
     switch (action) {
       case 'warn':
-        result = await moderationService.warnUser(id, session.user.id, reason);
+        result = await moderationService.warnUser(id, session.user.id, userRole, reason);
         break;
       
       case 'ban':
-        result = await moderationService.banUser(id, session.user.id, reason, durationDays);
+        result = await moderationService.banUser(id, session.user.id, userRole, reason, durationDays);
         break;
       
       case 'unban':
-        result = await moderationService.unbanUser(id, session.user.id, reason);
+        result = await moderationService.unbanUser(id, session.user.id, userRole, reason);
         break;
 
       default:

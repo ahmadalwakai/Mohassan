@@ -4,29 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/core/auth';
+import { requireModerator, AuthError } from '@/core/auth/guards';
 import { moderationService } from '@/core/services';
 
 // GET - Get moderation dashboard stats and pending items
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'غير مصرح' },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is moderator or admin
-    const userRole = (session.user as { role?: string }).role;
-    if (!userRole || !['ADMIN', 'MODERATOR'].includes(userRole)) {
-      return NextResponse.json(
-        { error: 'غير مصرح' },
-        { status: 403 }
-      );
-    }
+    // Require moderator or admin role
+    await requireModerator();
 
     const { searchParams } = new URL(request.url);
     const view = searchParams.get('view') || 'stats';
@@ -57,6 +42,14 @@ export async function GET(request: NextRequest) {
     }
   } catch (error) {
     console.error('[MODERATION_GET]', error);
+    
+    if (error instanceof AuthError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.code === 'UNAUTHENTICATED' ? 401 : 403 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'فشل في جلب بيانات الإدارة' },
       { status: 500 }

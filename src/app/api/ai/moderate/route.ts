@@ -4,7 +4,7 @@ import { auth } from '@/core/auth';
 
 /**
  * POST /api/ai/moderate
- * Moderate content using AI
+ * Moderate content using AI with admin-controlled limits
  */
 export async function POST(request: NextRequest) {
   try {
@@ -14,6 +14,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'يجب تسجيل الدخول' },
         { status: 401 }
+      );
+    }
+
+    // Check if AI is enabled
+    const aiEnabled = await aiService.isEnabled();
+    if (!aiEnabled) {
+      return NextResponse.json(
+        { error: 'الذكاء الاصطناعي غير متاح حالياً' },
+        { status: 503 }
       );
     }
 

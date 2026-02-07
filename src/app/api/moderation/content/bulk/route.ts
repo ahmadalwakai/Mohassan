@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user is admin only for bulk actions
-    const userRole = (session.user as { role?: string }).role;
+    const userRole = (session.user as { role?: string }).role as 'USER' | 'MODERATOR' | 'ADMIN' | undefined;
     if (userRole !== 'ADMIN') {
       return NextResponse.json(
         { error: 'العمليات الجماعية متاحة للمدراء فقط' },
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     let result;
 
     if (action === 'approve') {
-      result = await moderationService.bulkApprove(contentIds, session.user.id);
+      result = await moderationService.bulkApprove(contentIds, session.user.id, userRole);
     } else {
       if (!reason) {
         return NextResponse.json(
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
-      result = await moderationService.bulkReject(contentIds, session.user.id, reason);
+      result = await moderationService.bulkReject(contentIds, session.user.id, userRole, reason);
     }
 
     return NextResponse.json({
