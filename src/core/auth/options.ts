@@ -11,6 +11,7 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { compare } from 'bcryptjs';
 import { prisma } from '@/core/db/prisma';
 import type { Role, UserStatus } from '@prisma/client';
+import { getPermissionsForRole, type Permission } from '@/core/config/rbac';
 
 // Extend the built-in session types
 declare module 'next-auth' {
@@ -23,14 +24,16 @@ declare module 'next-auth' {
       role: Role;
       status: UserStatus;
       emailVerified: Date | null;
+      permissions: Permission[];
     };
   }
-  
+
   interface User {
     id: string;
     role: Role;
     status: UserStatus;
     emailVerified: Date | null;
+    permissions: Permission[];
   }
 }
 
@@ -40,6 +43,7 @@ interface ExtendedJWT extends JWT {
   role?: Role;
   status?: UserStatus;
   emailVerified?: Date | null;
+  permissions?: Permission[];
 }
 
 export const authOptions: NextAuthConfig = {
@@ -117,6 +121,7 @@ export const authOptions: NextAuthConfig = {
           role: user.role,
           status: user.status,
           emailVerified: user.emailVerified,
+          permissions: getPermissionsForRole(user.role),
         };
       },
     }),
@@ -136,71 +141,38 @@ export const authOptions: NextAuthConfig = {
 
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      const extToken = token as ExtendedJWT;
-      
+      const extendedToken = token as ExtendedJWT;
+
+      // Initial sign-in
       if (user) {
-        extToken.id = user.id!;
-        extToken.role = user.role;
-        extToken.status = user.status;
-        extToken.emailVerified = user.emailVerified;
+        extendedToken.id = user.id;
+        extendedToken.role = user.role;
+        extendedToken.status = user.status;
+        extendedToken.emailVerified = user.emailVerified;
+        extendedToken.permissions = getPermissionsForRole(user.role);
       }
       
-      // Handle session update (e.g., after email verification)
-      if (trigger === 'update' && session) {
-        extToken.emailVerified = session.emailVerified;
-        extToken.role = session.role;
-        extToken.status = session.status;
+      // Update session from client (e.g., after profile update)
+      if (trigger === 'update' && session?.user) {
+        if (session.user.role) {
+          extendedToken.role = session.user.role;
+          extendedToken.permissions = getPermissionsForRole(session.user.role);
+        }
+        if (session.user.status) extendedToken.status = session.user.status;
       }
-      
-      return extToken;
-    },
 
+      return extendedToken;
+    },
     async session({ session, token }) {
-      const extToken = token as ExtendedJWT;
+      const extendedToken = token as ExtendedJWT;
       
-      if (extToken) {
-        session.user.id = extToken.id ?? '';
-        session.user.role = extToken.role ?? 'USER';
-        session.user.status = extToken.status ?? 'ACTIVE';
-        session.user.emailVerified = extToken.emailVerified ?? null;
-      }
+      session.user.id = extendedToken.id as string;
+      session.user.role = extendedToken.role as Role;
+      session.user.status = extendedToken.status as UserStatus;
+      session.user.emailVerified = extendedToken.emailVerified as Date | null;
+      session.user.permissions = extendedToken.permissions as Permission[];
+
       return session;
-    },
-
-    async signIn({ user, account }) {
-      // Check user status for ALL providers (credentials + OAuth)
-      const dbUser = await prisma.user.findUnique({
-        where: { email: user.email! },
-      });
-      
-      if (!dbUser) {
-        return true; // User will be created by adapter
-      }
-
-      // Reject SUSPENDED users (temporary)
-      if (dbUser.status === 'SUSPENDED') {
-        return false;
-      }
-
-      // Reject BANNED users
-      if (dbUser.status === 'BANNED') {
-        // Check if ban has expired
-        if (dbUser.banExpiry && dbUser.banExpiry > new Date()) {
-          // Temp ban still active
-          return false;
-        }
-        if (!dbUser.banExpiry) {
-          // Permanent ban
-          return false;
-        }
-        // Ban expired, unban user automatically
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: { status: 'ACTIVE', bannedAt: null, banExpiry: null, banReason: null },
-        });
-      }
-      
-      return true;
     },
   },
 

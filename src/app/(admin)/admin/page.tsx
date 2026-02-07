@@ -360,7 +360,7 @@ export default async function AdminDashboardPage({ searchParams }: PageProps) {
         <SimpleGrid columns={{ base: 2, md: 3, lg: 6 }} gap={4}>
           <QuickAction href="/admin/users" label="إدارة المستخدمين" icon="👥" />
           <QuickAction href="/admin/settings" label="الإعدادات العامة" icon="⚙️" />
-          <QuickAction href="/admin/ai-center" label="مركز الذكاء الاصطناعي" icon="🤖" />
+          <QuickAction href="/admin/tools/ai" label="مركز الذكاء الاصطناعي" icon="🤖" />
           <QuickAction href="/admin/audit" label="سجل المراجعة" icon="📋" />
           <QuickAction href="/moderator/queue" label="قائمة المراجعة" icon="📝" />
           <QuickAction href="/moderator/reports" label="البلاغات" icon="⚠️" />

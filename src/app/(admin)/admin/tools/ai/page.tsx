@@ -58,7 +58,7 @@ export default function AdminAICenterPage() {
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/ai-center');
+      const res = await fetch('/api/admin/tools/ai');
       if (res.ok) {
         const data = await res.json();
         setSettings(data.settings);
@@ -85,7 +85,7 @@ export default function AdminAICenterPage() {
 
     try {
       setSaving(true);
-      const res = await fetch('/api/admin/ai-center', {
+      const res = await fetch('/api/admin/tools/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editedSettings),

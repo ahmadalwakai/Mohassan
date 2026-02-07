@@ -96,3 +96,7 @@ export function isAtLeastRole(userRole: Role, requiredRole: Role): boolean {
   const requiredIndex = roleHierarchy.indexOf(requiredRole);
   return userIndex >= requiredIndex;
 }
+
+export function getPermissionsForRole(role: Role): Permission[] {
+  return RolePermissions[role] ?? [];
+}

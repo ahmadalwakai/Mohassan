@@ -2,7 +2,7 @@ import { Box, Container, Heading, HStack, VStack, Text } from '@chakra-ui/react'
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/core/auth';
-import { adminDepartments } from '@/modules/admin-ops';
+import { adminDepartments, getDepartmentsForPermissions } from '@/modules/admin-ops';
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -25,6 +25,9 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
   if (session.user.status === 'BANNED' || session.user.status === 'SUSPENDED') {
     redirect('/login?error=account_suspended');
   }
+
+  const visibleDepts = getDepartmentsForPermissions(session.user.permissions);
+
   return (
     <Box minH="100vh" bg="bg.primary">
       {/* Header */}
@@ -55,7 +58,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             top={8}
           >
             <VStack align="stretch" gap={1}>
-              {adminDepartments.map((dept) => (
+              {visibleDepts.map((dept) => (
                 <Link key={dept.id} href={dept.route}>
                   <Box
                     py={3}

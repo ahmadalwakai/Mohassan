@@ -13,6 +13,7 @@ export interface AdminDepartment {
   iconName: string; // emoji or icon key
   description: string;
   permissions: Permission[];
+  group?: 'core' | 'tools';
 }
 
 export const adminDepartments: AdminDepartment[] = [
@@ -23,6 +24,7 @@ export const adminDepartments: AdminDepartment[] = [
     iconName: '📊',
     description: 'نظرة عامة على الإحصائيات والأنشطة الأخيرة',
     permissions: ['MANAGE_SETTINGS'],
+    group: 'core',
   },
   {
     id: 'users',
@@ -31,6 +33,7 @@ export const adminDepartments: AdminDepartment[] = [
     iconName: '👥',
     description: 'إدارة المستخدمين والأدوار والحظر والتحذيرات',
     permissions: ['MANAGE_USERS', 'MANAGE_ROLES'],
+    group: 'core',
   },
   {
     id: 'content',
@@ -39,6 +42,7 @@ export const adminDepartments: AdminDepartment[] = [
     iconName: '📝',
     description: 'مراجعة وإدارة جميع المحتويات على المنصة',
     permissions: ['MODERATE_CONTENT'],
+    group: 'core',
   },
   {
     id: 'safety',
@@ -47,6 +51,7 @@ export const adminDepartments: AdminDepartment[] = [
     iconName: '🛡️',
     description: 'إدارة الكلمات المحظورة والحدود وسياسات السلامة',
     permissions: ['MANAGE_SETTINGS'],
+    group: 'core',
   },
   {
     id: 'settings',
@@ -55,6 +60,7 @@ export const adminDepartments: AdminDepartment[] = [
     iconName: '⚙️',
     description: 'إعدادات النظام العامة',
     permissions: ['MANAGE_SETTINGS'],
+    group: 'core',
   },
   {
     id: 'audit',
@@ -63,14 +69,16 @@ export const adminDepartments: AdminDepartment[] = [
     iconName: '📋',
     description: 'عرض سجل جميع الإجراءات الإدارية',
     permissions: ['VIEW_AUDIT_LOGS'],
+    group: 'core',
   },
   {
-    id: 'ai-center',
-    label: 'مركز الذكاء الاصطناعي',
-    route: '/admin/ai-center',
+    id: 'tools-ai',
+    label: 'أدوات الذكاء الاصطناعي',
+    route: '/admin/tools/ai',
     iconName: '🤖',
     description: 'إدارة إعدادات واستخدام الذكاء الاصطناعي',
     permissions: ['MANAGE_AI_CENTER'],
+    group: 'tools',
   },
   {
     id: 'permissions',

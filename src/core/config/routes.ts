@@ -48,7 +48,7 @@ export const routes = {
     users: '/admin/users',
     settings: '/admin/settings',
     audit: '/admin/audit',
-    aiCenter: '/admin/ai-center',
+    aiCenter: '/admin/tools/ai',
   },
   
   // API routes

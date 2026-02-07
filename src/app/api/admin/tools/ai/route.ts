@@ -1,7 +1,7 @@
 /**
  * AI CENTER API
- * GET /api/admin/ai-center - Get AI settings and stats
- * POST /api/admin/ai-center - Update AI settings
+ * GET /api/admin/tools/ai - Get AI settings and stats
+ * POST /api/admin/tools/ai - Update AI settings
  */
 
 import { NextRequest, NextResponse } from 'next/server';
