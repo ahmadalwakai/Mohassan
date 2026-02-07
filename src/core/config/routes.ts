@@ -55,6 +55,10 @@ export const routes = {
   api: {
     auth: '/api/auth',
     health: '/api/health',
+    user: {
+      profile: '/api/user/profile',
+      notifications: '/api/user/notifications',
+    },
     ai: {
       search: '/api/ai/search',
       summarize: '/api/ai/summarize',
