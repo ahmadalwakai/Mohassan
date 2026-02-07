@@ -24,8 +24,8 @@ const sidebarLinks: SidebarLink[] = [
   { href: '/dashboard/notifications', label: 'الإشعارات', icon: '🔔' },
   { href: '/dashboard/saved', label: 'المحفوظات', icon: '⭐' },
   // Moderator links
-  { href: '/dashboard/moderation', label: 'الإدارة', icon: '🛡️', moderatorOnly: true },
-  { href: '/dashboard/reports', label: 'البلاغات', icon: '⚠️', moderatorOnly: true },
+  { href: '/moderator', label: 'الإدارة', icon: '🛡️', moderatorOnly: true },
+  { href: '/moderator/reports', label: 'البلاغات', icon: '⚠️', moderatorOnly: true },
   // Admin links
   { href: '/dashboard/users', label: 'المستخدمون', icon: '👥', adminOnly: true },
   { href: '/dashboard/settings', label: 'الإعدادات', icon: '⚙️', adminOnly: true },
